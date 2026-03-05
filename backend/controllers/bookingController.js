@@ -15,6 +15,7 @@ exports.createBooking = async (req, res) => {
     }
 
     conn = await db.getConnection();
+    const slipName = slipFile.filename;
 
     // 1. Create Booker
     const bookerResult = await conn.execute(
@@ -36,9 +37,9 @@ exports.createBooking = async (req, res) => {
 
     // 3. Create Payment
     await conn.execute(
-      `INSERT INTO Payment (PayID, BILLID, PayStatus, PayDate, PayFile, PayAmount, BookingID, BookerID, RoomID)
+      `INSERT INTO Payment (PayID, BILLID, PayStatus, PayDate, PayFiles, PayAmount, BookingID, BookerID, RoomID)
        VALUES (Payment_SEQ.NEXTVAL, Bill_SEQ.NEXTVAL, 'WAITING_VERIFY', SYSDATE, :slip, 5500, :bookingId, :bookerId, :roomId)`,
-      { slip: slipFile.buffer, bookingId, bookerId, roomId }
+      { slip: slipFile.filename, bookingId, bookerId, roomId }
     );
 
     await conn.commit();
@@ -190,7 +191,7 @@ exports.getSlipByBookingId = async (req, res) => {
     if (result.rows.length === 0) return res.status(404).send("ไม่พบสลิป");
 
     res.setHeader("Content-Type", "image/jpeg");
-    res.send(result.rows[0].PAYFILE);
+    res.send(result.rows[0].PAYFILES);
   } catch (err) {
     res.status(500).send(err.message);
   } finally {

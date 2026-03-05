@@ -163,10 +163,8 @@
       </div>
     </footer>
 
-    <script>
-  // รอให้ HTML โหลดเสร็จก่อน
+   <script>
   document.addEventListener('DOMContentLoaded', () => {
-    // Mobile menu toggle (ถ้ามี)
     const menuBtn = document.getElementById('menuBtn');
     if (menuBtn) {
       menuBtn.addEventListener('click', () => {
@@ -175,21 +173,14 @@
       });
     }
 
-    // ล็อกอินจริง
     const loginForm = document.getElementById('loginForm');
-    if (!loginForm) {
-      console.error('ไม่พบฟอร์ม id="loginForm" ในหน้า');
-      return;
-    }
+    if (!loginForm) return;
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const usernameInput = document.getElementById('login-username') || document.getElementById('username');
-      const passwordInput = document.getElementById('login-password') || document.getElementById('password');
-
-      const username = usernameInput?.value?.trim();
-      const password = passwordInput?.value?.trim();
+      const username = document.getElementById('username')?.value?.trim();
+      const password = document.getElementById('password')?.value?.trim();
 
       if (!username || !password) {
         alert('กรุณากรอกชื่อผู้ใช้และรหัสผ่านให้ครบ');
@@ -205,17 +196,28 @@
 
         const data = await response.json();
 
-        if (!response.ok) {
+        if (!response.ok || !data.success) {
           throw new Error(data.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
         }
 
-        // ล็อกอินสำเร็จ
-        localStorage.setItem('tenantUsername', data.username);
-        localStorage.setItem('tenantRoomId', data.roomId);
+        // แยก redirect ตาม role
+        if (data.role === 'admin') {
+          localStorage.setItem('adminUsername', data.username);
+          localStorage.setItem('userRole', 'admin');
+          alert('เข้าสู่ระบบสำเร็จ! กำลังไปหน้าแอดมิน...');
+          window.location.href = 'admin-dashboard.html';
 
-        alert('เข้าสู่ระบบสำเร็จ! กำลังไปหน้าแดชบอร์ด...');
+        } else if (data.role === 'tenant') {
+          localStorage.setItem('tenantUsername', data.username);
+          localStorage.setItem('tenantRoomId', data.roomId);
+          localStorage.setItem('tenantAccId', data.accId);
+          localStorage.setItem('userRole', 'tenant');
+          alert('เข้าสู่ระบบสำเร็จ! กำลังไปหน้าแดชบอร์ด...');
+          window.location.href = 'member-dashboard.html';
 
-        window.location.href = 'member-dashboard.html';
+        } else {
+          throw new Error('ไม่รู้จัก role ของผู้ใช้');
+        }
 
       } catch (err) {
         alert('เกิดข้อผิดพลาด: ' + err.message);

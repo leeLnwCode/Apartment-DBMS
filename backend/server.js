@@ -19,10 +19,11 @@ app.use(express.json());
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+
 app.use("/api/rooms", roomRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/payments", paymentRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/bills', billRoutes);
 app.use("/api/contracts", contractRoutes);

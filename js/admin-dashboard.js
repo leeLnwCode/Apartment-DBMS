@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', function () {
   const API_BASE = "http://localhost:3000/api";
 
@@ -174,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function () {
         email: row.BEMAIL,
         status: row.BKSTATUS,
         requestDate: row.BKDATE,
-        slip: `${API_BASE}/payments/slip/${row.BOOKINGID}`
+        slip: `${API_BASE}/payments/slip/${row.PAYID}`
       }));
 
       renderRequests();
@@ -251,15 +252,15 @@ document.addEventListener('DOMContentLoaded', function () {
   // ────────────────────────────────────────────────
   // Slip Modal
   // ────────────────────────────────────────────────
-  function showSlipModal(src) {
-    const modal = document.getElementById('slipModal');
-    const img = document.getElementById('slipImg');
-    if (modal && img) {
-      img.src = src;
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-    }
-  }
+  function showSlipModal(file){
+
+  const img = document.getElementById("slipImg");
+
+  img.src = `${API_BASE}/uploads/${file}`;
+
+  document.getElementById("slipModal").classList.remove("hidden");
+
+}
 
   function closeSlipModal() {
     const modal = document.getElementById('slipModal');
@@ -296,7 +297,15 @@ document.addEventListener('DOMContentLoaded', function () {
       loadBookingRequests();
       loadAndRenderRooms();
     }
+
+    if (name === 'bills') {
+    loadBillsFromAPI();
   }
+
+  if (name === 'payments') {
+    loadPayments();
+  }
+}
 
   pageBtns.forEach(b => b.addEventListener('click', () => showPage(b.dataset.page)));
 
@@ -330,7 +339,52 @@ document.addEventListener('DOMContentLoaded', function () {
   // ────────────────────────────────────────────────
   // Bills Section (mock data)
   // ────────────────────────────────────────────────
-  function renderBills() {
+  function getMonthName(month) {
+  const months = [
+    "มกราคม","กุมภาพันธ์","มีนาคม","เมษายน",
+    "พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม",
+    "กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"
+  ];
+  return months[month - 1] || month;
+}
+ async function loadBillsFromAPI() {
+  const res = await fetch("http://localhost:3000/api/bills");
+  const data = await res.json();
+
+  if (data.success) {
+
+    bills = data.data.map(b => ({
+
+      // ใช้ใน admin
+      id: b.billId,
+      room: b.roomId,
+      total: b.totalAmount,
+
+      // ใช้ใน member payment
+      billId: b.billId,
+      roomId: b.roomId,
+      totalAmount: b.totalAmount,
+
+      // รายละเอียด
+      waterUnit: b.waterUnit,
+      electricUnit: b.electricUnit,
+
+      waterCost: b.waterCost * b.waterUnit,
+      elecCost: b.electricCost * b.electricUnit,
+
+      roomPrice: b.totalAmount -
+        (b.waterCost * b.waterUnit) -
+        (b.electricCost * b.electricUnit),
+
+      month: b.BILLMONTH,
+      year: b.BILLYEAR
+
+    }));
+
+    renderBills();
+  }
+}
+function renderBills() {
     const container = document.getElementById('billsList');
     if (!container) return;
     container.innerHTML = '';
@@ -340,8 +394,8 @@ document.addEventListener('DOMContentLoaded', function () {
       div.innerHTML = `
         <div>
           <div class="font-medium text-lg text-gray-800">ห้อง ${b.room}</div>
-          <div class="text-sm text-gray-500">${b.month} ${b.year}</div>
-          <div class="text-sm mt-1">ราคา: <span class="text-green-600 font-medium">฿${b.total}</span></div>
+         <div class="text-sm text-gray-500">${getMonthName(b.month)} ${b.year}</div>
+          <div class="text-sm mt-1">ราคา: <span class="text-green-600 font-medium">฿${b.total.toLocaleString()}</span></div>
         </div>
         <div class="flex items-center gap-2">
           <button data-id="${b.id}" class="view-bill px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded text-sm font-medium transition-colors">รายละเอียด</button>
@@ -397,140 +451,192 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  billRoomSel?.addEventListener('change', () => {
-    const roomId = billRoomSel.value;
-    if (!roomId) return;
-    const prev = roomMeters[roomId] || { water: 0, elec: 0 };
-    document.getElementById('prevWater').value = prev.water;
-    document.getElementById('prevElec').value = prev.elec;
-    calculatePreview();
-  });
+ billRoomSel?.addEventListener('change', async () => {
+  const roomId = billRoomSel.value;
+  if (!roomId) return;
+
+  const res = await fetch(`http://localhost:3000/api/bills/last/${roomId}`);
+  const data = await res.json();
+
+  if (data.success) {
+    document.getElementById('prevWater').value = data.data.water;
+    document.getElementById('prevElec').value = data.data.elec;
+  }
+
+  calculatePreview();
+});
 
   document.getElementById('currWater')?.addEventListener('input', calculatePreview);
   document.getElementById('currElec')?.addEventListener('input', calculatePreview);
 
   function calculatePreview() {
-    const roomId = billRoomSel.value;
-    if (!roomId) return;
-    const room = rooms.find(r => r.ROOMID === roomId);
-    if (!room) return;
+  const roomId = billRoomSel.value;
+  if (!roomId) return;
 
-    const prevW = parseFloat(document.getElementById('prevWater').value) || 0;
-    const currW = parseFloat(document.getElementById('currWater').value) || 0;
-    const prevE = parseFloat(document.getElementById('prevElec').value) || 0;
-    const currE = parseFloat(document.getElementById('currElec').value) || 0;
-
-    const usedW = Math.max(0, currW - prevW);
-    const usedE = Math.max(0, currE - prevE);
-
-    const costW = usedW * 25;
-    const costE = usedE * 7;
-    const total = room.RPRICE + costW + costE;
-
-    calcRoomPrice.textContent = `฿${room.RPRICE}`;
-    calcWaterCost.textContent = `฿${costW} (${usedW} ยูนิต)`;
-    calcElecCost.textContent = `฿${costE} (${usedE} หน่วย)`;
-    calcTotalCost.textContent = `฿${total}`;
+  const room = rooms.find(r => r.ROOMID === roomId);
+  if (!room) {
+    console.log("Room not found in rooms array");
+    return;
   }
 
-  billForm?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const idVal = document.getElementById('billId').value;
-    const roomId = billRoomSel.value;
-    const room = rooms.find(r => r.ROOMID === roomId);
-    if (!room) return;
+  const roomPrice = Number(room.RPRICE) || 0;
 
-    const prevW = parseFloat(document.getElementById('prevWater').value) || 0;
-    const currW = parseFloat(document.getElementById('currWater').value) || 0;
-    const prevE = parseFloat(document.getElementById('prevElec').value) || 0;
-    const currE = parseFloat(document.getElementById('currElec').value) || 0;
+  const prevW = parseFloat(document.getElementById('prevWater').value) || 0;
+  const currW = parseFloat(document.getElementById('currWater').value) || 0;
+  const prevE = parseFloat(document.getElementById('prevElec').value) || 0;
+  const currE = parseFloat(document.getElementById('currElec').value) || 0;
 
-    const usedW = Math.max(0, currW - prevW);
-    const usedE = Math.max(0, currE - prevE);
-    
-    const costW = usedW * 25;
-    const costE = usedE * 7;
-    const total = room.RPRICE + costW + costE;
+  const usedW = Math.max(0, currW - prevW);
+  const usedE = Math.max(0, currE - prevE);
 
-    const newBill = {
-      id: idVal ? parseInt(idVal) : Date.now(),
-      room: roomId,
-      month: document.getElementById('billMonth').value,
-      year: document.getElementById('billYear').value,
-      roomPrice: room.RPRICE,
-      prevWater: prevW, currWater: currW,
-      waterCost: costW,
-      prevElec: prevE, currElec: currE,
-      elecCost: costE,
-      total
-    };
+  const costW = usedW * 25;
+  const costE = usedE * 7;
 
-    if (idVal) {
-      const idx = bills.findIndex(b => b.id === parseInt(idVal));
-      if (idx !== -1) bills[idx] = newBill;
+  const total = roomPrice + costW + costE;
+
+  calcRoomPrice.textContent = `฿${roomPrice}`;
+  calcWaterCost.textContent = `฿${costW} (${usedW} ยูนิต)`;
+  calcElecCost.textContent = `฿${costE} (${usedE} หน่วย)`;
+  calcTotalCost.textContent = `฿${total}`;
+}
+
+  billForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+const billMonth = document.getElementById('billMonth').value;
+const billYear = document.getElementById('billYear').value;
+  const roomId = billRoomSel.value;
+  const room = rooms.find(r => r.ROOMID === roomId);
+  if (!room) return;
+
+  const prevW = parseFloat(document.getElementById('prevWater').value) || 0;
+  const currW = parseFloat(document.getElementById('currWater').value) || 0;
+  const prevE = parseFloat(document.getElementById('prevElec').value) || 0;
+  const currE = parseFloat(document.getElementById('currElec').value) || 0;
+
+  const usedW = Math.max(0, currW - prevW);
+  const usedE = Math.max(0, currE - prevE);
+
+  const waterCost = 25;
+  const electricCost = 7;
+
+  try {
+    const res = await fetch("http://localhost:3000/api/bills", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+  roomId,
+  waterUnit: usedW,
+  electricUnit: usedE,
+  waterCost,
+  electricCost,
+  billMonth,
+  billYear
+})
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("สร้างบิลสำเร็จ");
+
+      // รีโหลดจาก API ใหม่
+      await loadBillsFromAPI();
+
+      closeBillModal();
     } else {
-      bills.push(newBill);
+      alert("สร้างบิลไม่สำเร็จ: " + data.message);
     }
 
-    roomMeters[roomId] = { water: currW, elec: currE };
-  
-    closeBillModal();
-    renderBills();
-  });
-
-  function deleteBill(id) {
-    if (confirm('คุณต้องการลบบิลนี้ใช่หรือไม่?')) {
-      bills = bills.filter(b => b.id !== id);
-      renderBills();
-    }
+  } catch (err) {
+    console.error(err);
+    alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
   }
+});
+
+
+  async function deleteBill(id) {
+  if (!confirm('คุณต้องการลบบิลนี้ใช่หรือไม่?')) return;
+
+  try {
+    const res = await fetch(`http://localhost:3000/api/bills/${id}`, {
+      method: "DELETE"
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("ลบบิลสำเร็จ");
+      await loadBillsFromAPI();
+    } else {
+      alert("ลบไม่สำเร็จ: " + data.message);
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("เกิดข้อผิดพลาด");
+  }
+}
 
   function openEditBill(id) {
-    const b = bills.find(x => x.id === id);
-    if (!b) return;
-    populateRoomOptions();
-    billForm.reset();
-    document.getElementById('billModalTitle').textContent = 'แก้ไขบิล';
-    document.getElementById('billId').value = b.id;
-    billRoomSel.value = b.room;
-    document.getElementById('billMonth').value = b.month;
-    document.getElementById('billYear').value = b.year;
-    document.getElementById('prevWater').value = b.prevWater;
-    document.getElementById('currWater').value = b.currWater;
-    document.getElementById('prevElec').value = b.prevElec;
-    document.getElementById('currElec').value = b.currElec;
-   
-    calculatePreview();
-   
-    billModal.classList.remove('hidden');
-    billModal.classList.add('flex');
-  }
+
+  const b = bills.find(x => x.id === id);
+  if (!b) return;
+
+  populateRoomOptions();
+
+  billForm.reset();
+
+  document.getElementById('billModalTitle').textContent = 'แก้ไขบิล';
+
+  document.getElementById('billId').value = b.id;
+
+  billRoomSel.value = b.room;
+
+  document.getElementById('billMonth').value = b.month;
+  document.getElementById('billYear').value = b.year;
+
+  // ใช้ unit เดิมแทน
+  document.getElementById('prevWater').value = 0;
+  document.getElementById('currWater').value = b.waterUnit;
+
+  document.getElementById('prevElec').value = 0;
+  document.getElementById('currElec').value = b.electricUnit;
+
+  calculatePreview();
+
+  billModal.classList.remove('hidden');
+  billModal.classList.add('flex');
+
+}
 
   const billDetailsModal = document.getElementById('billDetailsModal');
   function showBillDetails(id) {
-    const b = bills.find(x => x.id === id);
-    if (!b) return;
-    const content = document.getElementById('billDetailsContent');
-    if (!content) return;
+  const b = bills.find(x => x.id === id);
+  if (!b) return;
+
+  const content = document.getElementById('billDetailsContent');
+  if (!content) return;
 
     content.innerHTML = `
       <div class="flex justify-between border-b pb-2">
         <span class="font-medium text-gray-500">ห้องพัก:</span><span class="font-bold text-gray-800">ห้อง ${b.room}</span>
       </div>
       <div class="flex justify-between border-b pb-2 pt-2">
-        <span class="font-medium text-gray-500">รอบบิล:</span><span class="font-bold text-gray-800">${b.month} ${b.year}</span>
+        <span class="font-medium text-gray-500">รอบบิล:</span><span class="font-bold text-gray-800">${getMonthName(b.month)} ${b.year}</span>
       </div>
       <div class="flex justify-between border-b pb-2 pt-2">
-        <span class="font-medium text-gray-500">ค่าห้องพัก:</span><span class="text-gray-800">฿${b.roomPrice}</span>
+        <span class="font-medium text-gray-500">ค่าห้องพัก:</span><span class="text-gray-800">฿${b.roomPrice.toLocaleString()}</span>
       </div>
       <div class="flex justify-between border-b pb-2 pt-2">
-        <span class="font-medium text-gray-500">ค่าน้ำ (${Math.max(0, b.currWater - b.prevWater)} ยูนิต):</span><span class="text-gray-800">฿${b.waterCost}</span>
+        <span class="font-medium text-gray-500">ค่าน้ำ (${b.waterUnit} ยูนิต):</span><span class="text-gray-800">฿${b.waterCost.toLocaleString()}</span>
       </div>
       <div class="flex justify-between border-b pb-2 pt-2">
-        <span class="font-medium text-gray-500">ค่าไฟ (${Math.max(0, b.currElec - b.prevElec)} หน่วย):</span><span class="text-gray-800">฿${b.elecCost}</span>
+        <span class="font-medium text-gray-500">ค่าไฟ (${b.electricUnit} หน่วย):</span><span class="text-gray-800">฿${b.elecCost.toLocaleString()}</span>
       </div>
       <div class="flex justify-between pt-2 mt-2">
-        <span class="font-bold text-lg text-gray-800">รวมทั้งหมด:</span><span class="font-bold text-lg text-green-600">฿${b.total}</span>
+        <span class="font-bold text-lg text-gray-800">รวมทั้งหมด:</span><span class="font-bold text-lg text-green-600">฿${b.total.toLocaleString()}</span>
       </div>
     `;
     billDetailsModal.classList.remove('hidden');
@@ -542,44 +648,93 @@ document.addEventListener('DOMContentLoaded', function () {
     billDetailsModal?.classList.remove('flex');
   });
 
-  // ────────────────────────────────────────────────
-  // Payments Section (mock data)
-  // ────────────────────────────────────────────────
+
+async function loadPayments() {
+  try {
+
+    const res = await fetch("http://localhost:3000/api/payments");
+    const result = await res.json();
+
+    console.log("API result:", result);
+    console.log("API data:", result.data);
+
+    payments = result.data || [];
+
+    console.log("payments after set:", payments);
+
+    renderPayments();
+
+  } catch (err) {
+    console.error("โหลด payment ไม่สำเร็จ", err);
+  }
+}
+
+
   function renderPayments() {
-    const container = document.getElementById('paymentsList');
-    if (!container) return;
-    const filterVal = document.getElementById('filterPayments')?.value;
 
-    let filtered = payments;
-    if (filterVal) filtered = filtered.filter(p => p.payDate?.startsWith(filterVal));
+  const container = document.getElementById('paymentsList');
+  if (!container) return;
+console.log("payments data:", payments);
+  const filterVal = document.getElementById('filterPayments')?.value;
 
-    container.innerHTML = filtered.length === 0
-      ? '<div class="text-gray-500 text-center py-4">ไม่พบข้อมูลในเดือนที่เลือก</div>'
+  let filtered = payments;
+
+  if (filterVal) {
+    filtered = filtered.filter(p =>
+  p.PAYDATE?.includes(filterVal)
+);
+  }
+
+  container.innerHTML = filtered.length === 0
+    ? '<div class="text-gray-500 text-center py-4">ไม่พบข้อมูล</div>'
+    : '';
+
+  filtered.forEach(p => {
+
+    const div = document.createElement('div');
+
+    div.className = 'bg-white p-4 rounded shadow flex flex-col md:flex-row md:items-center justify-between gap-4';
+
+    const dateStr = p.PAYDATE
+      ? new Date(p.PAYDATE).toLocaleString('th-TH')
       : '';
 
-    filtered.forEach(p => {
-      const div = document.createElement('div');
-      div.className = 'bg-white p-4 rounded shadow flex flex-col md:flex-row md:items-center justify-between gap-4';
-      const dateStr = p.payDate ? new Date(p.payDate).toLocaleString('th-TH') : '';
+    div.innerHTML = `
+      <div class="space-y-1">
+        <div class="font-medium text-lg">ห้อง ${p.ROOMID}</div>
+        <div class="text-sm text-gray-600">
+          ราคา: <span class="text-green-600 font-medium">฿${p.PAYAMOUNT}</span>
+        </div>
+        <div class="text-sm text-gray-500">
+          วันที่จ่าย: ${dateStr}
+        </div>
+      </div>
 
-      div.innerHTML = `
-        <div class="space-y-1">
-          <div class="font-medium text-lg">ห้อง ${p.room}</div>
-          <div class="text-sm text-gray-600">รอบบิล: ${p.month} ${p.year}</div>
-          <div class="text-sm text-gray-600">ราคา: <span class="text-green-600 font-medium">฿${p.amount}</span></div>
-          <div class="text-sm text-gray-500">วันที่จ่าย: ${dateStr}</div>
-        </div>
-        <div>
-          ${p.slip ? `<button data-slip="${p.slip}" class="view-payment-slip px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded text-sm">ดูสลิป</button>` : ''}
-        </div>
-      `;
-      container.appendChild(div);
+      <div>
+        ${p.PAYFILES
+          ? `<button data-slip="${p.PAYFILES}"
+              class="view-payment-slip px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded text-sm">
+              ดูสลิป
+            </button>`
+          : ''}
+      </div>
+    `;
+
+    container.appendChild(div);
+
+  });
+
+  container.querySelectorAll('.view-payment-slip').forEach(btn => {
+
+    btn.addEventListener('click', () => {
+
+      showSlipModal(btn.dataset.slip);
+
     });
 
-    container.querySelectorAll('.view-payment-slip').forEach(btn =>
-      btn.addEventListener('click', () => showSlipModal(btn.dataset.slip))
-    );
-  }
+  });
+
+}
 
 // Render users (Database version)
 async function renderUsers() {
@@ -1060,6 +1215,7 @@ async (e) => {
 document.addEventListener("DOMContentLoaded", () => {
 
   loadContractsFromAPI();
+  loadBillsFromAPI();
 
 });
 
@@ -1075,7 +1231,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ────────────────────────────────────────────────
   loadBookingRequests();
   loadAndRenderRooms();
-  renderBills();
+  loadBillsFromAPI();
   renderPayments();
   renderUsers();
   loadContractsFromAPI();

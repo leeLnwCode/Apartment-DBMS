@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const bookingController = require("../controllers/bookingController");
 const multer = require("multer");
-
 const upload = multer({ storage: multer.memoryStorage() });
 
 // จอง + อัปโหลดสลิป
