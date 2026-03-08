@@ -33,7 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const bkRes = await fetch('http://localhost:3000/api/bookings');
         if (bkRes.ok) {
           const bookings = await bkRes.json();
-          bookings.forEach(b => pendingRooms.add(b.ROOMID));
+          bookings.forEach(b => {
+            if (b.BKSTATUS === 'WAITING_VERIFY') {
+              pendingRooms.add(b.ROOMID);
+            }
+          });
         }
       } catch (e) {
         console.error('โหลดข้อมูลการจองไม่สำเร็จ', e);

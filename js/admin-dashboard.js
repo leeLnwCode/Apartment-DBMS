@@ -246,7 +246,10 @@ document.addEventListener('DOMContentLoaded', function () {
       const dateStr = r.requestDate ? new Date(r.requestDate).toLocaleString('th-TH') : 'ไม่ระบุ';
 
       const action = r.status === 'WAITING_VERIFY'
-        ? `<button data-slip="${r.slip}" class="view-slip px-4 py-2 bg-green-50 text-green-700 rounded text-sm hover:bg-green-100">ดูสลิป</button>`
+        ? `<div class="flex gap-2">
+             <button data-id="${r.id}" class="approve-booking px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">อนุมัติ</button>
+             <button data-slip="${r.slip}" class="view-slip px-4 py-2 bg-green-50 text-green-700 rounded text-sm hover:bg-green-100">ดูสลิป</button>
+           </div>`
         : `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">✓ อนุมัติแล้ว</span>`;
 
       div.innerHTML = `
@@ -267,6 +270,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
     container.querySelectorAll('.view-slip').forEach(btn => {
       btn.addEventListener('click', () => showSlipModal(btn.dataset.slip));
+    });
+
+    // Handle Approve button
+    container.querySelectorAll('.approve-booking').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const bookingId = btn.dataset.id;
+        if (!confirm('ยืนยันหน้าการอนุมัติการจองนี้ใช่หรือไม่? ห้องจะถูกเปลี่ยนเป็น "เต็ม" ทันที')) return;
+
+        try {
+          const res = await fetch(`${API_BASE}/bookings/approve/${bookingId}`, {
+            method: 'PUT'
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            alert('อนุมัติการจองสำเร็จ!');
+            loadBookingRequests(); // Reload bookings
+            loadAndRenderRooms(); // Reload rooms to update UI
+          } else {
+            alert('เกิดข้อผิดพลาด: ' + (data.message || 'ไม่ทราบสาเหตุ'));
+          }
+        } catch (error) {
+          console.error('Approve Error:', error);
+          alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
+        }
+      });
     });
   }
 
