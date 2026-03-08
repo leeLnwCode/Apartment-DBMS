@@ -90,13 +90,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             </div>
 
+            ${isAvailable ? `
             <button
               onclick="goToDetail('${room.ROOMID}')"
-              class="w-full bg-green-700 hover:bg-green-800 text-white py-2 rounded-lg">
+              class="w-full bg-green-700 hover:bg-green-800 text-white py-2 rounded-lg transition-colors">
 
               ดูรายละเอียด
 
             </button>
+            ` : `
+            <button
+              disabled
+              class="w-full bg-gray-400 text-white py-2 rounded-lg cursor-not-allowed">
+
+              เต็ม
+
+            </button>
+            `}
 
           </div>
         `;
