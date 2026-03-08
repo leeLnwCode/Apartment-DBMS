@@ -28,11 +28,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const rooms = await response.json();
 
+      let pendingRooms = new Set();
+      try {
+        const bkRes = await fetch('http://localhost:3000/api/bookings');
+        if (bkRes.ok) {
+          const bookings = await bkRes.json();
+          bookings.forEach(b => pendingRooms.add(b.ROOMID));
+        }
+      } catch (e) {
+        console.error('โหลดข้อมูลการจองไม่สำเร็จ', e);
+      }
+
       let filteredRooms = rooms;
 
       if (showOnlyAvailable) {
         filteredRooms = rooms.filter(room =>
-          room.RSTATUS === 'AVAILABLE'
+          room.RSTATUS === 'AVAILABLE' && !pendingRooms.has(room.ROOMID)
         );
       }
 
@@ -44,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       filteredRooms.forEach(room => {
 
+        const isPending = pendingRooms.has(room.ROOMID);
         const isAvailable = room.RSTATUS === 'AVAILABLE';
 
         const card = document.createElement('article');
@@ -80,20 +92,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 ฿${Number(room.RPRICE).toLocaleString()}/เดือน
               </p>
 
-              <span class="${isAvailable
-            ? 'bg-green-100 text-green-700'
-            : 'bg-red-100 text-red-700'} px-3 py-1 rounded-full text-sm">
+              <span class="${isPending
+            ? 'bg-yellow-100 text-yellow-700'
+            : isAvailable
+              ? 'bg-green-100 text-green-700'
+              : 'bg-red-100 text-red-700'} px-3 py-1 rounded-full text-sm font-semibold">
 
-                ${isAvailable ? 'ว่าง' : 'เต็ม'}
+                ${isPending ? 'ติดจอง' : isAvailable ? 'ว่าง' : 'เต็ม'}
 
               </span>
 
             </div>
 
-            ${isAvailable ? `
+            ${isPending ? `
+            <button
+              disabled
+              class="w-full bg-gray-400 text-white py-2 rounded-lg cursor-not-allowed font-semibold">
+
+              ติดจอง
+
+            </button>
+            ` : isAvailable ? `
             <button
               onclick="goToDetail('${room.ROOMID}')"
-              class="w-full bg-green-700 hover:bg-green-800 text-white py-2 rounded-lg transition-colors">
+              class="w-full bg-green-700 hover:bg-green-800 text-white py-2 rounded-lg transition-colors font-semibold">
 
               ดูรายละเอียด
 
@@ -101,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ` : `
             <button
               disabled
-              class="w-full bg-gray-400 text-white py-2 rounded-lg cursor-not-allowed">
+              class="w-full bg-gray-400 text-white py-2 rounded-lg cursor-not-allowed font-semibold">
 
               เต็ม
 

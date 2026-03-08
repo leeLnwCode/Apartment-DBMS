@@ -33,6 +33,22 @@ async function loadBookingSummary() {
 
   document.getElementById("totalPrice").textContent =
     "฿" + deposit.toLocaleString();
+
+  // Set the room image based on the room type
+  const smallRooms = ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4'];
+  const bedroomRooms = ['A5', 'B5'];
+
+  let imageUrl = 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400';
+  if (smallRooms.includes(roomId)) {
+    imageUrl = 'asset/img/small.jpg';
+  } else if (bedroomRooms.includes(roomId)) {
+    imageUrl = 'asset/img/bedroom.jpg';
+  }
+
+  const summaryImage = document.getElementById("summaryImage");
+  if (summaryImage) {
+    summaryImage.src = imageUrl;
+  }
 }
 
 
@@ -60,16 +76,16 @@ async function submitBooking(event) {
 
     const formData = new FormData();
 
-formData.append("roomId", roomId);
-formData.append("fullName", fullName);
-formData.append("phone", phone);
-formData.append("email", email);
-formData.append("payFile", slipFile);
+    formData.append("roomId", roomId);
+    formData.append("fullName", fullName);
+    formData.append("phone", phone);
+    formData.append("email", email);
+    formData.append("payFile", slipFile);
 
-const res = await fetch(`${BOOKING_API}/create`, {
-  method: "POST",
-  body: formData
-});
+    const res = await fetch(`${BOOKING_API}/create`, {
+      method: "POST",
+      body: formData
+    });
 
     const data = await res.json();
 
@@ -81,7 +97,7 @@ const res = await fetch(`${BOOKING_API}/create`, {
       .getElementById("successModal")
       .classList.remove("hidden");
 
-  } catch (err) {                                                                                                                                                  
+  } catch (err) {
 
     console.error(err);
     alert("จองไม่สำเร็จ: " + err.message);
@@ -90,7 +106,7 @@ const res = await fetch(`${BOOKING_API}/create`, {
 
 }
 
-                                          
+
 
 // toggle payment
 function togglePaymentMethod() {
@@ -116,7 +132,7 @@ function togglePaymentMethod() {
 
   }
 
-} 
+}
 function getQueryParameter(param) {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get(param);
@@ -133,7 +149,7 @@ document.addEventListener("DOMContentLoaded", () => {
     backBtn.href = `detail.html?room=${roomId}`;
   }
 
-}); 
+});
 
 // init
 document.addEventListener("DOMContentLoaded", () => {

@@ -54,23 +54,32 @@ async function loadRoomData() {
   setupRoomImages(roomId);
 
   let room = roomsData[roomId];
-  if (!room) {
-    // ลองดึงจาก API
-    try {
-      const resp = await fetch(`http://localhost:3000/api/rooms/${roomId}`);
-      if (resp.ok) {
-        const dbRoom = await resp.json();
-        room = {
-          name: `ห้อง ${dbRoom.ROOMID}`,
-          price: dbRoom.RPRICE,
-          deposit: 5500,
-          signingDay: dbRoom.RPRICE,
-          status: dbRoom.RSTATUS === 'AVAILABLE' ? 'available' : 'full',
-          image: dbRoom.IMAGE_URL || images[0]
-        };
+  let isPending = false;
+
+  // ลองดึงจาก API เสมอเพื่อเอาข้อมูลล่าสุด
+  try {
+    const resp = await fetch(`http://localhost:3000/api/rooms/${roomId}`);
+    if (resp.ok) {
+      const dbRoom = await resp.json();
+      room = {
+        name: `ห้อง ${dbRoom.ROOMID}`,
+        price: dbRoom.RPRICE,
+        deposit: 5500,
+        signingDay: dbRoom.RPRICE,
+        status: dbRoom.RSTATUS === 'AVAILABLE' ? 'available' : 'full',
+        image: dbRoom.IMAGE_URL || images[0]
+      };
+    }
+
+    // Check if room has pending bookings
+    const pbResp = await fetch(`http://localhost:3000/api/bookings/pending/${roomId}`);
+    if (pbResp.ok) {
+      const pbData = await pbResp.json();
+      if (pbData.hasPending) {
+        if (room) room.status = 'pending';
       }
-    } catch (e) { }
-  }
+    }
+  } catch (e) { }
 
   if (!room) {
     document.body.innerHTML = "<h1 class='text-3xl font-bold text-red-600 text-center mt-10'>ไม่พบข้อมูลห้อง</h1>";
@@ -89,6 +98,12 @@ async function loadRoomData() {
     document.querySelector('button:nth-of-type(1)').className = 'w-full bg-gray-400 text-white py-3 rounded-lg font-bold text-lg cursor-not-allowed';
     document.querySelector('button:nth-of-type(1)').disabled = true;
     document.querySelector('button:nth-of-type(1)').textContent = 'เต็มแล้ว';
+  } else if (room.status === 'pending') {
+    statusBadge.className = 'bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full font-semibold text-sm';
+    statusBadge.textContent = 'ติดจอง';
+    document.querySelector('button:nth-of-type(1)').className = 'w-full bg-gray-400 text-white py-3 rounded-lg font-bold text-lg cursor-not-allowed';
+    document.querySelector('button:nth-of-type(1)').disabled = true;
+    document.querySelector('button:nth-of-type(1)').textContent = 'ติดจอง';
   } else {
     statusBadge.textContent = 'ว่าง';
   }
