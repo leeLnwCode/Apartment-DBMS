@@ -4,6 +4,7 @@ const userController = require('../controllers/userController');
 
 router.get('/',                        userController.getAllUsers);
 router.post('/',                       userController.createUser);
+router.post('/edit/:id',                 userController.updateUser);
 
 // Soft Delete (เดิมชื่อ delete แต่ตอนนี้เป็น deactivate)
 router.delete('/:id',                  userController.deleteUser);

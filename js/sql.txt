@@ -1,0 +1,35 @@
+commit;
+
+
+desc Booking;
+desc Booker;
+desc bill;
+desc payment;
+desc member;
+desc account;
+desc contract;
+desc room;
+
+select * from Account;
+select * from room;
+select * from member;
+select * from bill;
+select * from payment;
+select * from Booking;
+select * from CONTRACT;
+select * from Booker;
+
+DELETE FROM PAYMENT;
+DELETE FROM BILL;
+DELETE FROM CONTRACT;
+DELETE FROM BOOKING;
+DELETE FROM ACCOUNT;
+DELETE FROM MEMBER;
+DELETE FROM Booker;
+
+
+
+SELECT ROOMID, RPRICE FROM ROOM WHERE ROOMID = 'A3';
+
+
+

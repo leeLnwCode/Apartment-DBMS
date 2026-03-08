@@ -1,7 +1,6 @@
 const db = require("../db");
 const oracledb = require("oracledb");
 
-
 // -------------------------------------------------------
 // GET ALL PAYMENTS  (Admin)
 // -------------------------------------------------------
@@ -66,13 +65,13 @@ exports.createPayment = async (req, res) => {
 
     const bindVars = {
       payAmount: parsedPayAmount,
-      roomId:    roomId    || null,
-      billId:    type === 'DEPOSIT' ? null : toNumberOrNull(billId),
-      accId:     toNumberOrNull(accId),
-      bookerId:  toNumberOrNull(bookerId),
+      roomId: roomId || null,
+      billId: type === 'DEPOSIT' ? null : toNumberOrNull(billId),
+      accId: toNumberOrNull(accId),
+      bookerId: toNumberOrNull(bookerId),
       bookingId: toNumberOrNull(bookingId),
       payFile,
-      payType:   type
+      payType: type
     };
 
     await conn.execute(
@@ -149,17 +148,17 @@ exports.getPaymentsByRoom = async (req, res) => {
     );
 
     const payments = result.rows.map(r => ({
-      PAYID:      r.PAYID,
-      PAYSTATUS:  r.PAYSTATUS,
-      PAYDATE:    r.PAYDATE ? r.PAYDATE.toISOString() : null,
-      PAYAMOUNT:  r.PAYAMOUNT,
-      ROOMID:     r.ROOMID,
-      BILLID:     r.BILLID,
-      ACCID:      r.ACCID,
-      BOOKERID:   r.BOOKERID,
-      BOOKINGID:  r.BOOKINGID,
-      PAYFILES:   r.PAYFILES,
-      PAYTYPE:    r.PAYTYPE
+      PAYID: r.PAYID,
+      PAYSTATUS: r.PAYSTATUS,
+      PAYDATE: r.PAYDATE ? r.PAYDATE.toISOString() : null,
+      PAYAMOUNT: r.PAYAMOUNT,
+      ROOMID: r.ROOMID,
+      BILLID: r.BILLID,
+      ACCID: r.ACCID,
+      BOOKERID: r.BOOKERID,
+      BOOKINGID: r.BOOKINGID,
+      PAYFILES: r.PAYFILES,
+      PAYTYPE: r.PAYTYPE
     }));
 
     res.json({ success: true, data: payments });
@@ -192,15 +191,15 @@ exports.getPaymentsByAccId = async (req, res) => {
     );
 
     const payments = result.rows.map(r => ({
-      PAYID:     r.PAYID,
+      PAYID: r.PAYID,
       PAYSTATUS: r.PAYSTATUS,
-      PAYDATE:   r.PAYDATE ? new Date(r.PAYDATE).toISOString() : null,
+      PAYDATE: r.PAYDATE ? new Date(r.PAYDATE).toISOString() : null,
       PAYAMOUNT: r.PAYAMOUNT,
-      ROOMID:    r.ROOMID,
-      BILLID:    r.BILLID,
-      ACCID:     r.ACCID,
-      PAYFILES:  r.PAYFILES,
-      PAYTYPE:   r.PAYTYPE
+      ROOMID: r.ROOMID,
+      BILLID: r.BILLID,
+      ACCID: r.ACCID,
+      PAYFILES: r.PAYFILES,
+      PAYTYPE: r.PAYTYPE
     }));
 
     res.json({ success: true, data: payments });

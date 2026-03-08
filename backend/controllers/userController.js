@@ -10,10 +10,12 @@ exports.getAllUsers = async (req, res) => {
     connection = await db.getConnection();
 
     const result = await connection.execute(
-      `SELECT AccID, AccUser, AccPass, RoomID
-         FROM Account
-        WHERE is_active = 1
-        ORDER BY RoomID ASC`,
+      `SELECT a.AccID, a.AccUser, a.AccPass, a.RoomID, 
+              m.MemName, m.MemPhone, m.MemEmail
+         FROM Account a
+         LEFT JOIN Member m ON a.AccID = m.AccID
+        WHERE a.is_active = 1
+        ORDER BY a.RoomID ASC`,
       {},
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
@@ -32,10 +34,10 @@ exports.getAllUsers = async (req, res) => {
 // CREATE USER
 // -------------------------------------------------------
 exports.createUser = async (req, res) => {
-  const { roomId, accUser, accPass } = req.body;
+  const { roomId, accUser, accPass, memName, memPhone, memEmail } = req.body;
 
-  if (!roomId || !accUser || !accPass) {
-    return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน' });
+  if (!roomId || !accUser || !accPass || !memName || !memPhone) {
+    return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน (ต้องการชื่อและเบอร์โทรลูกบ้านด้วย)' });
   }
 
   let connection;
@@ -60,17 +62,102 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'ชื่อผู้ใช้นี้มีอยู่แล้ว' });
     }
 
+    // 1. ดึงค่า AccID ถัดไปจาก Sequence ออกมาก่อน (เพื่อความชัวร์ 100% ว่าไม่เป็น undefined)
+    const seqCheck = await connection.execute(`SELECT Account_SEQ.NEXTVAL AS SEQ FROM DUAL`);
+    const accId = seqCheck.rows[0].SEQ || seqCheck.rows[0].seq;
+
+    if (!accId) {
+      throw new Error("ไม่สามารถสร้างรหัสบัญชีใหม่ได้ (Account_SEQ)");
+    }
+
+    // 2. Insert Account โดยใช้ AccID ที่ได้มา
     await connection.execute(
       `INSERT INTO Account (AccID, AccUser, AccPass, RoomID, is_active)
-       VALUES (Account_SEQ.NEXTVAL, :accUser, :accPass, :roomId, 1)`,
-      { accUser, accPass, roomId }
+       VALUES (:accId, :accUser, :accPass, :roomId, 1)`,
+      { accId, accUser, accPass, roomId }
     );
+
+    await connection.execute(
+      `INSERT INTO Member (MemName, MemPhone, MemEmail, AccID, RoomID)
+       VALUES (:memName, :memPhone, :memEmail, :accId, :roomId)`,
+      {
+        memName,
+        memPhone,
+        memEmail: memEmail || null,
+        accId,
+        roomId
+      }
+    );
+
     await connection.commit();
 
-    res.json({ success: true, message: 'เพิ่มผู้ใช้สำเร็จ' });
+    res.json({ success: true, message: 'เพิ่มผู้ใช้และข้อมูลลูกบ้านสำเร็จ' });
 
   } catch (err) {
     console.error('createUser error:', err);
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด: ' + err.message });
+  } finally {
+    if (connection) await connection.close();
+  }
+};
+
+// -------------------------------------------------------
+// UPDATE USER (แก้ไขข้อมูล AccPass และชื่อลูกบ้าน)
+// -------------------------------------------------------
+exports.updateUser = async (req, res) => {
+  const accId = req.params.id;
+  const { accPass, memName, memPhone, memEmail } = req.body;
+
+  if (!accPass || !memName || !memPhone) {
+    return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (รหัสผ่าน, ชื่อ, เบอร์โทร)' });
+  }
+
+  let connection;
+  try {
+    connection = await db.getConnection();
+
+    // 1. อัปเดตรหัสผ่าน (Account)
+    await connection.execute(
+      `UPDATE Account SET AccPass = :accPass WHERE AccID = :accId AND is_active = 1`,
+      { accPass, accId }
+    );
+
+    // 2. เช็คว่ามีข้อมูลใน Member หรือยัง (เผื่อของเก่าที่ตอนแรกยังไม่มี Member)
+    const checkMem = await connection.execute(
+      `SELECT COUNT(*) AS CNT FROM Member WHERE AccID = :accId`,
+      { accId }
+    );
+
+    if (checkMem.rows[0].CNT > 0) {
+      // มีอยู่แล้ว ให้ UPDATE
+      await connection.execute(
+        `UPDATE Member 
+         SET MemName = :memName, 
+             MemPhone = :memPhone, 
+             MemEmail = :memEmail 
+         WHERE AccID = :accId`,
+        { memName, memPhone, memEmail: memEmail || null, accId }
+      );
+    } else {
+      // ถ้ายังไม่มี ต้องดึง RoomID มาก่อนเพื่อ INSERT ใหม่
+      const roomCheck = await connection.execute(
+        `SELECT RoomID FROM Account WHERE AccID = :accId`,
+        { accId }
+      );
+      if (roomCheck.rows.length > 0) {
+        const roomId = roomCheck.rows[0].ROOMID;
+        await connection.execute(
+          `INSERT INTO Member (MemName, MemPhone, MemEmail, AccID, RoomID)
+           VALUES (:memName, :memPhone, :memEmail, :accId, :roomId)`,
+          { memName, memPhone, memEmail: memEmail || null, accId, roomId }
+        );
+      }
+    }
+
+    await connection.commit();
+    res.json({ success: true, message: 'อัปเดตข้อมูลผู้ใช้และข้อมูลลูกบ้านสำเร็จ' });
+  } catch (err) {
+    console.error('updateUser error:', err);
     res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด: ' + err.message });
   } finally {
     if (connection) await connection.close();

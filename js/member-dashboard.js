@@ -384,43 +384,88 @@ document.getElementById("closeSlip")?.addEventListener("click", closeSlipModal);
 function renderHistory() {
   if (payments.length === 0) {
     return `
-      <h2 class="text-3xl font-bold mb-6">ประวัติการชำระเงิน</h2>
-      <div class="bg-white p-10 text-center rounded-xl">
-        ยังไม่มีประวัติการชำระ
+      <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-800">ประวัติการชำระเงิน</h2>
+        <p class="text-gray-500 mt-2">รายการชำระเงินทั้งหมดของคุณ</p>
+      </div>
+      <div class="bg-white p-16 text-center rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center">
+        <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+          <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-700 mb-2">ยังไม่มีประวัติการชำระเงิน</h3>
+        <p class="text-gray-500">คุณยังไม่เคยทำรายการชำระเงินใดๆ ในระบบ</p>
       </div>
     `;
   }
 
   let html = `
-    <h2 class="text-3xl font-bold mb-6">ประวัติการชำระเงิน</h2>
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold text-gray-800">ประวัติการชำระเงิน</h2>
+      <p class="text-gray-500 mt-2">รายการชำระเงินทั้งหมดของคุณ</p>
+    </div>
     <div class="space-y-4">
   `;
 
   payments.forEach(p => {
-    const payDate = new Date(p.PAYDATE).toLocaleDateString("th-TH");
+    const payDate = new Date(p.PAYDATE).toLocaleDateString("th-TH", {
+      year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
     const amount = Number(p.PAYAMOUNT).toLocaleString();
-    const status = p.PAYSTATUS || "ไม่ระบุ";
+    const status = p.PAYSTATUS || "รอตรวจสอบ";
     const room = p.ROOMID || "-";
     const fileName = p.PAYFILES;
+    
+    // Type of payment styling
+    const isBooking = p.BOOKINGID ? true : false;
+    const typeLabel = isBooking ? 'ค่าจองห้องพัก' : 'ค่าเช่าห้องพักรายเดือน';
+    const typeIcon = isBooking 
+      ? `<svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path></svg>`
+      : `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>`;
+    const typeBgColor = isBooking ? 'bg-purple-100' : 'bg-blue-100';
+
+    // Status styling
+    let statusStyle = '';
+    if (status.includes('รอตรวจสอบ')) {
+      statusStyle = 'bg-amber-100 text-amber-700';
+    } else if (status.includes('อนุมัติ') || status.includes('สำเร็จ')) {
+      statusStyle = 'bg-green-100 text-green-700';
+    } else {
+      statusStyle = 'bg-gray-100 text-gray-700';
+    }
 
     html += `
-      <div class="bg-white p-6 rounded-xl shadow border">
-        <div class="flex justify-between items-start">
-          <div>
-            <p class="font-bold">${payDate}</p>
-            <p class="text-gray-500">฿${amount}</p>
-            <p class="text-sm text-gray-600">ห้อง ${room}</p>
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div class="flex items-start gap-4">
+            <div class="${typeBgColor} w-12 h-12 rounded-2xl flex items-center justify-center shrink-0">
+              ${typeIcon}
+            </div>
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="font-bold text-lg text-gray-800">${typeLabel}</h3>
+                <span class="px-2.5 py-1 text-xs font-semibold rounded-full ${statusStyle}">${status}</span>
+              </div>
+              <p class="text-gray-500 text-sm mb-1">${payDate}</p>
+              <p class="text-sm font-medium text-gray-600">ห้อง ${room}</p>
+            </div>
           </div>
-          <div class="text-right">
-            <div class="text-green-600 font-bold">${status}</div>
+          <div class="flex flex-col md:items-end justify-between h-full w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-gray-100">
+            <div class="text-2xl font-bold text-green-600 mb-2 md:mb-3">฿${amount}</div>
             ${
               fileName
                 ? `<button 
                      onclick="showSlipModal('${fileName}')" 
-                     class="mt-2 px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                     class="px-5 py-2 bg-green-50 text-green-700 rounded-xl hover:bg-green-100 font-semibold transition-colors duration-200 flex items-center gap-2 text-sm justify-center w-full md:w-auto">
+                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                     </svg>
                      ดูสลิป
                    </button>`
-                : `<span class="text-gray-400 text-sm">ไม่มีสลิป</span>`
+                : `<span class="px-4 py-2 bg-gray-50 text-gray-400 rounded-xl text-sm font-medium border border-gray-100 flex items-center justify-center w-full md:w-auto">ไม่มีสลิป</span>`
             }
           </div>
         </div>

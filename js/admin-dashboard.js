@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', function () {
   let rooms = [];
   let bookingRequests = [];
   let roomChart = null;
-
   // ข้อมูล mock/local ที่ยังคงไว้
   const roomMeters = {
     'A1': { water: 100, elec: 500 },
@@ -102,12 +101,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                   }
                   const approveRes = await fetch(`${API_BASE}/bookings/auto-approve/${roomId}`, { method: 'POST' });
-                  if (!approveRes.ok) throw new Error('อนุมัติอัตโนมัติล้มเหลว');
-                  alert('อนุมัติอัตโนมัติเรียบร้อย');
-                  loadBookingRequests();
+                  const approveData = await approveRes.json().catch(() => ({}));
+                  if (!approveRes.ok) throw new Error(approveData.message || 'อนุมัติอัตโนมัติล้มเหลว');
+                  alert('✓ อนุมัติอัตโนมัติเรียบร้อย! สร้าง Account และ Member เรียบร้อยแล้ว');
+                  await loadBookingRequests();
+                  await loadAndRenderRooms();
+                } else {
+                  e.target.checked = !isCheckedNow;
                 }
               } catch (err) {
                 console.error(err);
+                alert('เกิดข้อผิดพลาด: ' + err.message);
               }
             }
 
@@ -245,22 +249,28 @@ document.addEventListener('DOMContentLoaded', function () {
       div.className = 'bg-white p-4 rounded shadow mb-3';
       const dateStr = r.requestDate ? new Date(r.requestDate).toLocaleString('th-TH') : 'ไม่ระบุ';
 
+      const detailsBtn = `<button data-id="${r.id}" class="view-booking-details px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 mt-2 whitespace-nowrap">ดูรายละเอียด</button>`;
+
       const action = r.status === 'WAITING_VERIFY'
-        ? `<div class="flex gap-2">
+        ? `<div class="flex flex-wrap gap-2 justify-end">
              <button data-id="${r.id}" class="approve-booking px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">อนุมัติ</button>
              <button data-slip="${r.slip}" class="view-slip px-4 py-2 bg-green-50 text-green-700 rounded text-sm hover:bg-green-100">ดูสลิป</button>
+             ${detailsBtn}
            </div>`
-        : `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">✓ อนุมัติแล้ว</span>`;
+        : `<div class="flex flex-col items-end gap-2">
+             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">✓ อนุมัติแล้ว</span>
+             ${detailsBtn}
+           </div>`;
 
       div.innerHTML = `
-        <div class="flex items-start justify-between">
-          <div>
-            <div class="font-medium">${r.name || 'ไม่ระบุ'}</div>
-            <div class="text-sm text-gray-500">${r.phone || ''}</div>
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1">
+            <div class="font-medium text-lg">${r.name || 'ไม่ระบุ'}</div>
+            <div class="text-sm text-gray-500">${r.phone || '-'}</div>
             <div class="text-sm text-gray-500">${dateStr}</div>
-            <div class="text-sm">ห้อง: <strong>${r.room}</strong></div>
+            <div class="text-sm mt-1">ห้อง: <strong class="text-green-700">${r.room}</strong></div>
           </div>
-          <div class="flex flex-col items-end gap-2">
+          <div class="flex flex-col items-end min-w-[120px]">
             ${action}
           </div>
         </div>
@@ -270,6 +280,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     container.querySelectorAll('.view-slip').forEach(btn => {
       btn.addEventListener('click', () => showSlipModal(btn.dataset.slip));
+    });
+
+    container.querySelectorAll('.view-booking-details').forEach(btn => {
+      btn.addEventListener('click', () => showBookingDetails(parseInt(btn.dataset.id)));
     });
 
     // Handle Approve button
@@ -284,9 +298,10 @@ document.addEventListener('DOMContentLoaded', function () {
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            alert('อนุมัติการจองสำเร็จ!');
-            loadBookingRequests(); // Reload bookings
-            loadAndRenderRooms(); // Reload rooms to update UI
+            alert('✓ อนุมัติการจองสำเร็จ! สร้าง Account และ Member เรียบร้อยแล้ว');
+            await loadBookingRequests();
+            await loadAndRenderRooms();
+            renderUsers();
           } else {
             alert('เกิดข้อผิดพลาด: ' + (data.message || 'ไม่ทราบสาเหตุ'));
           }
@@ -298,10 +313,49 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  const bookingDetailsModal = document.getElementById('bookingDetailsModal');
+  function showBookingDetails(id) {
+    const r = bookingRequests.find(x => x.id === id);
+    if (!r) return;
 
+    const content = document.getElementById('bookingDetailsContent');
+    if (!content) return;
 
+    const dateStr = r.requestDate ? new Date(r.requestDate).toLocaleString('th-TH') : 'ไม่ระบุ';
+    const statusText = r.status === 'WAITING_VERIFY' ? '<span class="text-amber-600 font-medium">รอการอนุมัติ</span>' : '<span class="text-green-600 font-medium">อนุมัติแล้ว</span>';
 
+    content.innerHTML = `
+      <div class="flex justify-between border-b pb-2">
+        <span class="font-medium text-gray-500">รหัสการจอง:</span><span class="text-gray-800">${r.id}</span>
+      </div>
+      <div class="flex justify-between border-b pb-2 pt-2">
+        <span class="font-medium text-gray-500">ห้องพัก:</span><span class="font-bold text-green-700">${r.room}</span>
+      </div>
+      <div class="flex justify-between border-b pb-2 pt-2">
+        <span class="font-medium text-gray-500">ชื่อผู้จอง:</span><span class="text-gray-800">${r.name || '-'}</span>
+      </div>
+      <div class="flex justify-between border-b pb-2 pt-2">
+        <span class="font-medium text-gray-500">เบอร์โทรศัพท์:</span><span class="text-gray-800">${r.phone || '-'}</span>
+      </div>
+      <div class="flex justify-between border-b pb-2 pt-2">
+        <span class="font-medium text-gray-500">อีเมล:</span><span class="text-gray-800">${r.email || '-'}</span>
+      </div>
+      <div class="flex justify-between border-b pb-2 pt-2">
+        <span class="font-medium text-gray-500">วันที่ทำรายการ:</span><span class="text-gray-800">${dateStr}</span>
+      </div>
+      <div class="flex justify-between pt-2">
+        <span class="font-medium text-gray-500">สถานะ:</span>${statusText}
+      </div>
+    `;
 
+    bookingDetailsModal.classList.remove('hidden');
+    bookingDetailsModal.classList.add('flex');
+  }
+
+  document.getElementById('closeBookingDetailsBtn')?.addEventListener('click', () => {
+    bookingDetailsModal?.classList.add('hidden');
+    bookingDetailsModal?.classList.remove('flex');
+  });
   window.showSlipModal = function (fileName, title = "ตรวจสอบสลิปการชำระเงิน") {
 
     if (!fileName) {
@@ -374,11 +428,24 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (name === 'payments') {
+      const typeFilter = document.getElementById('filterPaymentType');
+      const monthFilter = document.getElementById('filterPayments');
+      if (typeFilter && !typeFilter.value) typeFilter.value = 'monthly';
+      if (monthFilter && !monthFilter.value) {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        monthFilter.value = `${yyyy}-${mm}`;
+      }
       loadPayments();
     }
   }
 
   pageBtns.forEach(b => b.addEventListener('click', () => showPage(b.dataset.page)));
+
+  document.getElementById('filterBills')?.addEventListener('change', renderBills);
+  document.getElementById('filterPayments')?.addEventListener('change', renderPayments);
+  document.getElementById('filterPaymentType')?.addEventListener('change', renderPayments);
 
   const mobileSidebar = document.getElementById('mobileSidebar');
   const mobileSidebarPanel = document.getElementById('mobileSidebarPanel');
@@ -463,7 +530,23 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!container) return;
     container.innerHTML = '';
 
-    bills.forEach(b => {
+    const filterVal = document.getElementById('filterBills')?.value;
+    let filtered = bills;
+    if (filterVal) {
+      const parts = filterVal.split('-');
+      if (parts.length === 2) {
+        const filterYear = parseInt(parts[0], 10);
+        const filterMonth = parseInt(parts[1], 10);
+        filtered = filtered.filter(b => b.year === filterYear && b.month === filterMonth);
+      }
+    }
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="text-gray-500 text-center py-4">ไม่พบข้อมูล</div>';
+      return;
+    }
+
+    filtered.forEach(b => {
       const div = document.createElement('div');
       div.className = 'bg-white p-4 rounded shadow flex items-center justify-between';
 
@@ -839,13 +922,20 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!container) return;
     console.log("payments data:", payments);
     const filterVal = document.getElementById('filterPayments')?.value;
+    const filterType = document.getElementById('filterPaymentType')?.value;
 
     let filtered = payments;
 
     if (filterVal) {
       filtered = filtered.filter(p =>
-        p.PAYDATE?.includes(filterVal)
+        p.PAYDATE?.startsWith(filterVal)
       );
+    }
+
+    if (filterType === 'monthly') {
+      filtered = filtered.filter(p => !p.BOOKINGID);
+    } else if (filterType === 'booking') {
+      filtered = filtered.filter(p => p.BOOKINGID);
     }
 
     container.innerHTML = filtered.length === 0
@@ -882,7 +972,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ${p.PAYFILES
           ? `<button 
          onclick="showSlipModal('${p.PAYFILES}', 'ตรวจสอบสลิปการชำระเงิน')"
-         class="mt-2 px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+         class="mt-2 px-4 py-2 bg-green-50 text-green-700 rounded text-sm hover:bg-green-100 font-medium transition-colors">
          ดูสลิป
        </button>`
           : `<span class="text-gray-400 text-sm">ไม่มีสลิป</span>`
@@ -926,30 +1016,49 @@ document.addEventListener('DOMContentLoaded', function () {
       users.forEach(u => {
 
         const div = document.createElement('div');
-
-        div.className = 'bg-white p-4 rounded shadow flex items-center justify-between';
+        div.className = 'bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:shadow-md';
 
         div.innerHTML = `
-        <div class="space-y-1">
-          <div class="font-medium text-lg text-gray-800">
-            ห้อง ${u.ROOMID}
+        <div class="space-y-3 flex-1">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold text-sm">
+              ห้อง ${u.ROOMID}
+            </div>
+            <div class="font-bold text-lg text-gray-800">
+              ${u.MEMNAME || '<span class="text-gray-400 italic font-normal text-sm">ไม่มีข้อมูลลูกบ้าน (Account ว่าง)</span>'}
+            </div>
           </div>
-
-          <div class="text-sm text-gray-600">
-            ชื่อผู้ใช้:
-            <span class="font-medium">${u.ACCUSER}</span>
-          </div>
-
-          <div class="text-sm text-gray-600">
-            รหัสผ่าน:
-            <span class="font-medium">${u.ACCPASS}</span>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600 pl-1 mt-3 border-t pt-3 border-gray-50">
+            <div>
+              <span class="font-semibold block text-gray-700 mb-2">ข้อมูลติดต่อ</span>
+              <div class="flex items-center gap-2 mt-1">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg> 
+                ${u.MEMPHONE || '-'}
+              </div>
+              <div class="flex items-center gap-2 mt-1">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg> 
+                ${u.MEMEMAIL || '-'}
+              </div>
+            </div>
+            <div>
+              <span class="font-semibold block text-gray-700 mb-2">ข้อมูลเข้าสู่ระบบ</span>
+              <div class="mt-1 flex items-center gap-2">Username: <span class="font-medium bg-gray-100 px-2 py-0.5 rounded">${u.ACCUSER}</span></div>
+              <div class="mt-1 flex items-center gap-2">Password: <span class="font-medium bg-gray-100 px-2 py-0.5 rounded">${u.ACCPASS}</span></div>
+            </div>
           </div>
         </div>
 
-        <div>
+        <div class="self-end md:self-center mt-4 md:mt-0 flex gap-2">
           <button data-id="${u.ACCID}"
-            class="delete-user px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded text-sm font-medium transition-colors">
-            ลบ
+            class="edit-user px-4 py-2 bg-yellow-50 text-yellow-600 hover:bg-yellow-100 rounded-lg text-sm font-semibold transition-colors border border-yellow-100 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            แก้ไข
+          </button>
+          <button data-id="${u.ACCID}"
+            class="delete-user px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-semibold transition-colors border border-red-100 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            ปิดใช้งาน
           </button>
         </div>
       `;
@@ -958,14 +1067,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
       });
 
-      container.querySelectorAll('.delete-user').forEach(btn => {
-
+      container.querySelectorAll('.edit-user').forEach(btn => {
         btn.addEventListener('click', () => {
-
-          deleteUser(btn.dataset.id);
-
+          const u = users.find(x => String(x.ACCID) === String(btn.dataset.id));
+          if (u) openEditUserModal(u);
         });
+      });
 
+      container.querySelectorAll('.delete-user').forEach(btn => {
+        btn.addEventListener('click', () => {
+          deleteUser(btn.dataset.id);
+        });
       });
 
     } catch (err) {
@@ -1014,6 +1126,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const userForm = document.getElementById('userForm');
   const userRoomSel = document.getElementById('userRoom');
 
+  let editingUserId = null;
+
   function populateUserRoomOptions() {
     if (!userRoomSel) return;
     userRoomSel.innerHTML = '<option value="">-- เลือกห้อง --</option>';
@@ -1023,11 +1137,34 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   document.getElementById('showAddUserModal')?.addEventListener('click', () => {
+    editingUserId = null;
     populateUserRoomOptions();
     userForm.reset();
+    document.getElementById('userModalTitle').textContent = 'เพิ่มผู้ใช้งานและข้อมูลลูกบ้าน';
+    document.getElementById('userRoom').disabled = false;
+    document.getElementById('userUsername').disabled = false;
     userModal.classList.remove('hidden');
     userModal.classList.add('flex');
   });
+
+  function openEditUserModal(user) {
+    editingUserId = user.ACCID;
+    populateUserRoomOptions();
+    userForm.reset();
+
+    document.getElementById('userModalTitle').textContent = 'แก้ไขข้อมูลผู้ใช้งานและลูกบ้าน';
+    document.getElementById('userRoom').value = user.ROOMID;
+    document.getElementById('userRoom').disabled = true; // ไม่อนุญาตให้เปลี่ยนห้องตอนแก้
+    document.getElementById('userUsername').value = user.ACCUSER;
+    document.getElementById('userUsername').disabled = true; // ไม่อนุญาตให้เปลี่ยน username
+    document.getElementById('userPassword').value = user.ACCPASS || '';
+    document.getElementById('userName').value = user.MEMNAME || '';
+    document.getElementById('userPhone').value = user.MEMPHONE || '';
+    document.getElementById('userEmail').value = user.MEMEMAIL || '';
+
+    userModal.classList.remove('hidden');
+    userModal.classList.add('flex');
+  }
 
   document.getElementById('cancelUserBtn')?.addEventListener('click', closeUserModal);
 
@@ -1041,53 +1178,51 @@ document.addEventListener('DOMContentLoaded', function () {
   userForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const roomId = userRoomSel.value;
-
-    // Check if room already has a user
-    const existingUser = users.find(u => u.room === roomId);
-    if (existingUser) {
-      alert(`ไม่สามารถเพิ่มผู้ใช้งานได้ เนื่องจากมีผู้ใช้งานในห้อง ${roomId} อยู่แล้ว`);
-      return;
-    }
-
     const username = document.getElementById('userUsername').value;
     const password = document.getElementById('userPassword').value;
+    const memName = document.getElementById('userName').value;
+    const memPhone = document.getElementById('userPhone').value;
+    const memEmail = document.getElementById('userEmail').value;
 
-    try {
-      const response = await fetch(
-        'http://localhost:3000/api/users',
-        {
-          method: 'POST',
-
-          headers: {
-            'Content-Type': 'application/json'
-          },
-
-          body: JSON.stringify({
-            roomId: roomId,
-            accUser: username,
-            accPass: password
-          })
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error();
+    if (!editingUserId) {
+      // Create mode
+      const existingUser = users.find(u => u.ROOMID === roomId);
+      if (existingUser) {
+        alert(`ไม่สามารถเพิ่มผู้ใช้งานได้ เนื่องจากมีผู้ใช้งานในห้อง ${roomId} อยู่แล้ว`);
+        return;
       }
 
-      alert('เพิ่มผู้ใช้สำเร็จ');
-
-      closeUserModal();
-
-      renderUsers();
-
-    } catch (err) {
-
-      alert('เพิ่มไม่สำเร็จ');
-
-      console.error(err);
-
+      try {
+        const response = await fetch('http://localhost:3000/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomId, accUser: username, accPass: password, memName, memPhone, memEmail })
+        });
+        if (!response.ok) throw new Error((await response.json()).message || 'เกิดข้อผิดพลาดในการเพิ่มข้อมูล');
+        alert('เพิ่มผู้ใช้และข้อมูลลูกบ้านสำเร็จ');
+        closeUserModal();
+        renderUsers();
+      } catch (err) {
+        alert('เพิ่มไม่สำเร็จ: ' + err.message);
+        console.error(err);
+      }
+    } else {
+      // Edit mode
+      try {
+        const response = await fetch(`http://localhost:3000/api/users/edit/${editingUserId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accPass: password, memName, memPhone, memEmail })
+        });
+        if (!response.ok) throw new Error((await response.json()).message || 'เกิดข้อผิดพลาดในการแก้ไขข้อมูล');
+        alert('แก้ไขข้อมูลสำเร็จ');
+        closeUserModal();
+        renderUsers();
+      } catch (err) {
+        alert('แก้ไขไม่สำเร็จ: ' + err.message);
+        console.error(err);
+      }
     }
-
   });
 
   // ────────────────────────────────────────────────
@@ -1212,13 +1347,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         <a href="${c.fileUrl}"
            target="_blank"
-           class="px-3 py-1 bg-blue-500 text-white rounded">
-           ดู
+           class="px-4 py-2 bg-green-50 text-green-700 rounded text-sm hover:bg-green-100 font-medium transition-colors text-center">
+           ดูไฟล์
         </a>
 
         <a href="${c.fileUrl}"
            download
-           class="px-3 py-1 bg-green-500 text-white rounded">
+           class="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 font-medium transition-colors text-center border border-transparent">
            ดาวน์โหลด
         </a>
 

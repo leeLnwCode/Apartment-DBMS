@@ -17,7 +17,6 @@ async function loadBookingSummary() {
   const roomId = getQueryParameter("room");
 
   if (!roomId) return;
-
   const res = await fetch(`${ROOM_API}/${roomId}`);
 
   const room = await res.json();
@@ -58,6 +57,12 @@ async function submitBooking(event) {
 
   event.preventDefault();
 
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'กำลังส่งคำขอ...';
+  }
+
   try {
 
     const roomId = getQueryParameter("room");
@@ -71,6 +76,7 @@ async function submitBooking(event) {
 
     if (!slipFile) {
       alert("กรุณาอัปโหลดสลิปก่อน");
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ยืนยันการจอง'; }
       return;
     }
 
@@ -92,15 +98,20 @@ async function submitBooking(event) {
     if (!data.success)
       throw new Error(data.message);
 
+    // Populate modal with booking details
+    const deposit = currentRoom ? (Number(currentRoom.RPRICE) + 2500).toLocaleString() : '-';
+    document.getElementById('modalRoom').textContent = roomId || '-';
+    document.getElementById('modalName').textContent = fullName || '-';
+    document.getElementById('modalPhone').textContent = phone || '-';
+    document.getElementById('modalDeposit').textContent = '฿' + deposit;
 
-    document
-      .getElementById("successModal")
-      .classList.remove("hidden");
+    document.getElementById("successModal").classList.remove("hidden");
 
   } catch (err) {
 
     console.error(err);
     alert("จองไม่สำเร็จ: " + err.message);
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ยืนยันการจอง'; }
 
   }
 

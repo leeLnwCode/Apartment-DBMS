@@ -10,6 +10,7 @@ exports.createBooking = async (req, res) => {
     const { roomId, fullName, phone, email } = req.body;
     const slipFile = req.file;
 
+
     console.log("[DEBUG] req.body:", req.body);
     console.log("[DEBUG] req.file:", req.file);
 
@@ -50,7 +51,6 @@ exports.createBooking = async (req, res) => {
       }
     );
     const bookingId = bookingResult.outBinds.outBookingId[0];
-
     // 3. สร้าง Payment (บันทึกชื่อไฟล์จริง)
     await conn.execute(
       `INSERT INTO Payment
@@ -134,19 +134,70 @@ exports.approveBooking = async (req, res) => {
     const { bookingId } = req.params;
     conn = await db.getConnection();
 
-    const roomRes = await conn.execute(`SELECT RoomID FROM Booking WHERE BookingID = :bookingId`, { bookingId });
+    // ดึงข้อมูล RoomID และรายละเอียดผู้จอง (Booker) เพื่อนำไปสร้าง Account & Member
+    const roomRes = await conn.execute(
+      `SELECT b.RoomID, bk.BName, bk.BPhone, bk.BEmail 
+       FROM Booking b 
+       JOIN Booker bk ON b.BookerID = bk.BookerID 
+       WHERE b.BookingID = :bookingId`,
+      { bookingId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
     if (roomRes.rows.length === 0) return res.status(404).json({ success: false, message: "ไม่พบคำจอง" });
 
-    const roomId = roomRes.rows[0].ROOMID;
+    const row = roomRes.rows[0];
+    const roomId = row.ROOMID;
+    const bName = row.BNAME;
+    const bPhone = row.BPHONE;
+    const bEmail = row.BEMAIL;
 
+    console.log('[approveBooking] roomId:', roomId, '| bName:', bName, '| bPhone:', bPhone);
+
+    // 1. ตรวจสอบว่ามี Account ของห้องนี้ที่ยัง Active อยู่ไหม ถ้ามีให้ Deactivate ก่อน (ป้องกันข้อผิดพลาด)
+    await conn.execute(`UPDATE Account SET is_active = 0 WHERE RoomID = :roomId AND is_active = 1`, { roomId });
+
+    // 2. สร้าง Account ใหม่ (Username: roomXXX, Password: เบอร์โทร)
+    const accUser = `room${roomId}`;
+    const accPass = bPhone || '123456';
+
+    // ดึง SEQ ให้ถูกต้อง โดยใส่ outFormat เพื่อให้ได้ object format
+    const seqCheck = await conn.execute(
+      `SELECT Account_SEQ.NEXTVAL AS SEQ FROM DUAL`,
+      {},
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const accId = seqCheck.rows[0].SEQ;
+    console.log('[approveBooking] accId from SEQ:', accId);
+
+    if (!accId) {
+      throw new Error("ระบบฐานข้อมูลไม่สามารถสร้างรหัสบัญชีได้ (SEQ ERROR)");
+    }
+
+    await conn.execute(
+      `INSERT INTO Account (AccID, AccUser, AccPass, RoomID, is_active)
+       VALUES (:accId, :accUser, :accPass, :roomId, 1)`,
+      { accId, accUser, accPass, roomId }
+    );
+    console.log('[approveBooking] Account inserted OK, accId:', accId);
+
+    // 3. สร้าง Member ผูกกับ Account
+    await conn.execute(
+      `INSERT INTO Member (MemName, MemPhone, MemEmail, AccID, RoomID)
+       VALUES (:memName, :memPhone, :memEmail, :accId, :roomId)`,
+      { memName: bName, memPhone: bPhone, memEmail: bEmail || null, accId, roomId }
+    );
+    console.log('[approveBooking] Member inserted OK');
+
+    // 4. อัปเดตสถานะ Booking, Room และ Payment
     await conn.execute(`UPDATE Booking SET BKStatus = 'APPROVED' WHERE BookingID = :bookingId`, { bookingId });
     await conn.execute(`UPDATE Room SET RSTATUS = 'OCCUPIED' WHERE RoomID = :roomId`, { roomId });
     await conn.execute(`UPDATE Payment SET PayStatus = 'VERIFIED' WHERE BookingID = :bookingId`, { bookingId });
 
     await conn.commit();
-    res.json({ success: true, message: "อนุมัติสำเร็จ! ห้องถูกจองแล้ว" });
+    console.log('[approveBooking] commit OK!');
+    res.json({ success: true, message: "อนุมัติและสร้างบัญชีผู้ใช้สำเร็จ!" });
   } catch (err) {
-    console.error(err);
+    console.error('[approveBooking] ERROR:', err);
     res.status(500).json({ success: false, message: err.message });
   } finally {
     if (conn) await conn.close();
@@ -186,16 +237,61 @@ exports.autoApproveForRoom = async (req, res) => {
     conn = await db.getConnection();
 
     const bookings = await conn.execute(
-      `SELECT BookingID FROM Booking WHERE ROOMID = :roomId AND BKSTATUS = 'WAITING_VERIFY' ORDER BY BKDATE ASC`,
-      { roomId }
+      `SELECT b.BookingID, bk.BName, bk.BPhone, bk.BEmail 
+       FROM Booking b 
+       JOIN Booker bk ON b.BookerID = bk.BookerID 
+       WHERE b.ROOMID = :roomId AND b.BKSTATUS = 'WAITING_VERIFY' 
+       ORDER BY b.BKDATE ASC`,
+      { roomId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     if (bookings.rows.length === 0) {
       return res.status(400).json({ success: false, message: "ไม่มีคำขอรอตรวจสอบ" });
-    } 
+    }
 
-    for (const row of bookings.rows) {
+    // Process only the first booking in the auto-approve queue to create the Account
+    for (let i = 0; i < bookings.rows.length; i++) {
+      const row = bookings.rows[i];
       const bookingId = row.BOOKINGID;
+
+      if (i === 0) {
+        const bName = row.BNAME;
+        const bPhone = row.BPHONE;
+        const bEmail = row.BEMAIL;
+
+        await conn.execute(`UPDATE Account SET is_active = 0 WHERE RoomID = :roomId AND is_active = 1`, { roomId });
+
+        const accUser = `room${roomId}`;
+        const accPass = bPhone || '123456';
+
+        const seqCheck = await conn.execute(
+          `SELECT Account_SEQ.NEXTVAL AS SEQ FROM DUAL`,
+          {},
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const accId = seqCheck.rows[0].SEQ;
+        console.log('[autoApprove] accId:', accId);
+
+        if (!accId) {
+          throw new Error("ไม่สามารถสร้างรหัสบัญชี (SEQ ERROR)");
+        }
+
+        await conn.execute(
+          `INSERT INTO Account (AccID, AccUser, AccPass, RoomID, is_active)
+           VALUES (:accId, :accUser, :accPass, :roomId, 1)`,
+          { accId, accUser, accPass, roomId }
+        );
+        console.log('[autoApprove] Account inserted OK');
+
+        await conn.execute(
+          `INSERT INTO Member (MemName, MemPhone, MemEmail, AccID, RoomID)
+           VALUES (:memName, :memPhone, :memEmail, :accId, :roomId)`,
+          { memName: bName, memPhone: bPhone, memEmail: bEmail || null, accId, roomId }
+        );
+        console.log('[autoApprove] Member inserted OK');
+      }
+
       await conn.execute(`UPDATE Booking SET BKStatus = 'APPROVED' WHERE BookingID = :id`, { id: bookingId });
       await conn.execute(`UPDATE Payment SET PayStatus = 'VERIFIED' WHERE BookingID = :id`, { id: bookingId });
     }
@@ -203,7 +299,7 @@ exports.autoApproveForRoom = async (req, res) => {
     await conn.execute(`UPDATE Room SET RSTATUS = 'OCCUPIED' WHERE ROOMID = :roomId`, { roomId });
     await conn.commit();
 
-    res.json({ success: true, approvedCount: bookings.rows.length });
+    res.json({ success: true, approvedCount: bookings.rows.length, message: "อนุมัติอัตโนมัติและสร้างบัญชีสำเร็จ!" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: err.message });

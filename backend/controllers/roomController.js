@@ -8,7 +8,6 @@ async function getAllRooms(req, res) {
   let conn;
   try {
     conn = await db.getConnection();
-
     const result = await conn.execute(
       `SELECT * FROM Room ORDER BY RoomID`,
       [],

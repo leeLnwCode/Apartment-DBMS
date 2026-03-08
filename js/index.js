@@ -1,7 +1,7 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const menuBtn = document.getElementById('menuBtn');
   if (menuBtn) {
-    menuBtn.addEventListener('click', function() {
+    menuBtn.addEventListener('click', function () {
       const menu = document.getElementById('mobileMenu');
       if (menu) menu.classList.toggle('hidden');
     });
@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 fetch("http://localhost:3000/rooms")
-.then(res => res.json())
-.then(data => {
+  .then(res => res.json())
+  .then(data => {
 
     console.log(data);
 
@@ -18,7 +18,7 @@ fetch("http://localhost:3000/rooms")
 
     data.forEach(room => {
 
-        container.innerHTML += `
+      container.innerHTML += `
             <div>
                 Room: ${room.room_number}
                 Price: ${room.price}
@@ -27,4 +27,4 @@ fetch("http://localhost:3000/rooms")
 
     });
 
-});
+  });

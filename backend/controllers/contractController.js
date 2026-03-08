@@ -2,7 +2,6 @@ const db = require("../db");
 const oracledb = require("oracledb");
 const path = require("path");
 const fs = require("fs");
-
 ;
 // =============================
 // GET ALL CONTRACTS
@@ -12,7 +11,7 @@ exports.getAllContracts = async (req, res) => {
   let connection;
 
   try {
-connection = await db.getConnection();
+    connection = await db.getConnection();
 
     const result = await connection.execute(
       `SELECT CONTRACID, CONTRACTFILE, ROOMID, UPLOADDATE
@@ -125,6 +124,6 @@ exports.downloadContract = async (req, res) => {
 
   }
 
- res.sendFile(filePath);
+  res.sendFile(filePath);
 
 };

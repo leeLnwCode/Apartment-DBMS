@@ -175,21 +175,60 @@
       </div>
     </main>
 
-    <!-- Success Modal -->
-    <div id="successModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4">
-        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <i class="fas fa-check text-2xl" style="color: #2E7D32;"></i>
+  <!-- Success Modal -->
+  <div id="successModal" class="hidden fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-[fadeIn_0.3s_ease]">
+      <!-- Icon -->
+      <div class="flex justify-center mb-5">
+        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+          <i class="fas fa-check-circle text-4xl text-green-600"></i>
         </div>
-        <h2 class="text-center text-2xl font-bold mb-3">จองสำเร็จ!</h2>
-        <p class="text-center text-gray-600 mb-6">
-          การจองของคุณได้รับการส่งเรียบร้อยแล้ว เราจะติดต่อคุณเพื่อยืนยันการจองในเร็วๆ นี้
-        </p>
-        <button onclick="window.location.href='room.html'" class="w-full bg-green-700 text-white hover:bg-green-800 py-2 rounded-lg font-semibold transition">
-          กลับไปยังห้องพัก
-        </button>
       </div>
+
+      <h2 class="text-center text-2xl font-bold text-gray-800 mb-1">ส่งคำขอจองสำเร็จ!</h2>
+      <p class="text-center text-gray-500 text-sm mb-6">รอแอดมินตรวจสอบและยืนยันคำขอของคุณนะคะ</p>
+
+      <!-- Booking Summary Box -->
+      <div class="bg-gray-50 rounded-xl p-5 space-y-3 mb-6 border border-gray-200">
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-500 flex items-center gap-1.5">
+            <i class="fas fa-door-open"></i> ห้องที่จอง
+          </span>
+          <span class="font-bold text-gray-800 bg-green-100 text-green-700 px-3 py-0.5 rounded-full"
+            id="modalRoom">-</span>
+        </div>
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-500 flex items-center gap-1.5">
+            <i class="fas fa-user"></i> ชื่อ-นามสกุล
+          </span>
+          <span class="font-semibold text-gray-700" id="modalName">-</span>
+        </div>
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-500 flex items-center gap-1.5">
+            <i class="fas fa-phone"></i> เบอร์โทร
+          </span>
+          <span class="font-semibold text-gray-700" id="modalPhone">-</span>
+        </div>
+        <hr class="border-gray-200" />
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600 font-semibold">ยอดชำระมัดจำ</span>
+          <span class="text-xl font-bold text-green-700" id="modalDeposit">-</span>
+        </div>
+      </div>
+
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
+        <p class="text-yellow-700 text-xs text-center">
+          <i class="fas fa-clock mr-1"></i>
+          คำขอจองอยู่ระหว่างรอการตรวจสอบ ทีมงานจะตามสอบสลิปและยืนยันสิทธิ์สำเร็จแล้วจะแจ้งให้ทราบค่ะ
+        </p>
+      </div>
+
+      <button onclick="window.location.href='room.html'"
+        class="w-full bg-green-700 text-white hover:bg-green-800 py-3 rounded-xl font-bold text-base transition shadow-md hover:shadow-lg">
+        กลับหน้าหลัก &rarr;
+      </button>
     </div>
+  </div>
 
     <footer class="bg-green-700 text-white py-8 mt-16">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

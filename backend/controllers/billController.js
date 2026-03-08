@@ -1,7 +1,6 @@
 // controllers/billController.js
 const db = require('../db');
 const oracledb = require('oracledb');
-
 /* ===========================
    CREATE BILL
 =========================== */
@@ -13,88 +12,89 @@ exports.createBill = async (req, res) => {
       message: 'ข้อมูลไม่ครบถ้วน'
     });
   }
+
   const water = Number(waterUnit) || 0;
   const electric = Number(electricUnit) || 0;
   const wCost = Number(waterCost) || 0;
   const eCost = Number(electricCost) || 0;
-   let connection;
+  let connection;
 
   try {
     connection = await db.getConnection();
 
 
-// ดึงราคาห้องจาก ROOM
-const roomResult = await connection.execute(
-  `SELECT RPRICE FROM ROOM WHERE ROOMID = :roomId`,
-  { roomId },
-  { outFormat: oracledb.OUT_FORMAT_OBJECT }
-);
+    // ดึงราคาห้องจาก ROOM
+    const roomResult = await connection.execute(
+      `SELECT RPRICE FROM ROOM WHERE ROOMID = :roomId`,
+      { roomId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-if (roomResult.rows.length === 0) {
-  return res.status(400).json({
-    success: false,
-    message: 'ไม่พบข้อมูลห้อง'
-  });
-}
+    if (roomResult.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'ไม่พบข้อมูลห้อง'
+      });
+    }
 
-const roomPrice = roomResult.rows[0].RPRICE;
+    const roomPrice = roomResult.rows[0].RPRICE;
 
-const totalAmount =
-  roomPrice +
-  (water * wCost) +
-  (electric * eCost);
+    const totalAmount =
+      roomPrice +
+      (water * wCost) +
+      (electric * eCost);
 
 
     // หา ACCID จาก ROOMID
     const accResult = await connection.execute(
-  `SELECT ACCID FROM ACCOUNT WHERE ROOMID = :roomId`,
-  { roomId },
-  { outFormat: oracledb.OUT_FORMAT_OBJECT }
-);
+      `SELECT ACCID FROM ACCOUNT WHERE ROOMID = :roomId`,
+      { roomId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-console.log("ACC QUERY RESULT:", accResult.rows);
+    console.log("ACC QUERY RESULT:", accResult.rows);
 
-if (accResult.rows.length === 0) {
-  return res.status(400).json({
-    success: false,
-    message: 'ไม่พบ ACCOUNT สำหรับห้องนี้'
-  });
-}
+    if (accResult.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'ไม่พบ ACCOUNT สำหรับห้องนี้'
+      });
+    }
 
-const accId = accResult.rows[0].ACCID;
+    const accId = accResult.rows[0].ACCID;
 
-console.log("ACCID =", accId);
+    console.log("ACCID =", accId);
 
     // ดึง BILLID จาก sequence
     const seqResult = await connection.execute(
-  `SELECT BILL_SEQ.NEXTVAL AS BILLID FROM DUAL`,
-  [],
-  { outFormat: oracledb.OUT_FORMAT_OBJECT }
-);
+      `SELECT BILL_SEQ.NEXTVAL AS BILLID FROM DUAL`,
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-console.log("Sequence result:", seqResult.rows);
+    console.log("Sequence result:", seqResult.rows);
 
-const billId = seqResult.rows[0].BILLID;
-const month = Number(billMonth);
-if (isNaN(month) || month < 1 || month > 12) {
-  return res.status(400).json({ success: false, message: 'เดือนไม่ถูกต้อง (1-12)' });
-}
-const year = Number(billYear);
-console.log("Generated BILLID:", billId);
-console.log("waterUnit =", waterUnit);
-console.log("electricUnit =", electricUnit);
-console.log("waterCost =", waterCost);
-console.log("electricCost =", electricCost);
+    const billId = seqResult.rows[0].BILLID;
+    const month = Number(billMonth);
+    if (isNaN(month) || month < 1 || month > 12) {
+      return res.status(400).json({ success: false, message: 'เดือนไม่ถูกต้อง (1-12)' });
+    }
+    const year = Number(billYear);
+    console.log("Generated BILLID:", billId);
+    console.log("waterUnit =", waterUnit);
+    console.log("electricUnit =", electricUnit);
+    console.log("waterCost =", waterCost);
+    console.log("electricCost =", electricCost);
 
-console.log("water =", water);
-console.log("electric =", electric);
-console.log("wCost =", wCost);
-console.log("eCost =", eCost);
-console.log("month =", month);
-console.log("year =", year);
+    console.log("water =", water);
+    console.log("electric =", electric);
+    console.log("wCost =", wCost);
+    console.log("eCost =", eCost);
+    console.log("month =", month);
+    console.log("year =", year);
 
     await connection.execute(
-  `INSERT INTO BILL (
+      `INSERT INTO BILL (
     BILLID,
     WATERUNIT,
     ELECTRICUNIT,
@@ -127,20 +127,20 @@ console.log("year =", year);
   ),
 1)
   )`,
-  {
-  BILLID: billId,
-  WATERUNIT: water,
-  ELECTRICUNIT: electric,
-  WATERCOST: wCost,
-  ELECTRICCOST: eCost,
-  TOTALAMOUNT: totalAmount,
-  ACCID: accId,
-  ROOMID: roomId,
-  billMonth: month,
-  billYear: year
-},
-  { autoCommit: true }
-);
+      {
+        BILLID: billId,
+        WATERUNIT: water,
+        ELECTRICUNIT: electric,
+        WATERCOST: wCost,
+        ELECTRICCOST: eCost,
+        TOTALAMOUNT: totalAmount,
+        ACCID: accId,
+        ROOMID: roomId,
+        billMonth: month,
+        billYear: year
+      },
+      { autoCommit: true }
+    );
 
     res.json({
       success: true,
