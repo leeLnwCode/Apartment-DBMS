@@ -1,4 +1,3 @@
-const oracledb = require('oracledb');
 const db = require('../db');
 
 exports.login = async (req, res) => {
@@ -15,14 +14,13 @@ exports.login = async (req, res) => {
   try {
     conn = await db.getConnection();
 
-    // ตรวจสอบ ADMIN ก่อน
+    // 1. ตรวจสอบ ADMIN
     const adminResult = await conn.execute(
       `SELECT ADMINUSER
          FROM ADMIN
         WHERE ADMINUSER = :username
           AND ADMINPASS = :password`,
-      { username, password },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      { ":username": username, ":password": password }
     );
 
     if (adminResult.rows.length > 0) {
@@ -33,15 +31,14 @@ exports.login = async (req, res) => {
       });
     }
 
-    // ตรวจสอบ Tenant  — เพิ่ม is_active = 1
+    // 2. ตรวจสอบ Tenant
     const tenantResult = await conn.execute(
       `SELECT AccID, RoomID, AccUser
          FROM Account
         WHERE AccUser   = :username
           AND AccPass   = :password
-          AND is_active = 1`,
-      { username, password },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          AND IS_ACTIVE = 1`,
+      { ":username": username, ":password": password }
     );
 
     if (tenantResult.rows.length > 0) {
@@ -49,20 +46,20 @@ exports.login = async (req, res) => {
       return res.json({
         success: true,
         role: "tenant",
-        username: user.ACCUSER,
-        roomId:   user.ROOMID,
-        accId:    user.ACCID
+        username: user.AccUser,
+        roomId:   user.RoomID,
+        accId:    user.AccID
       });
     }
 
-    // ตรวจว่า Account มีอยู่แต่ถูก deactivate หรือไม่ (เพื่อให้ Error message ชัดขึ้น)
+    // 3. ตรวจสอบ Account ที่ถูกปิดใช้งาน
     const inactiveCheck = await conn.execute(
       `SELECT COUNT(*) AS CNT
          FROM Account
         WHERE AccUser   = :username
           AND AccPass   = :password
-          AND is_active = 0`,
-      { username, password }
+          AND IS_ACTIVE = 0`,
+      { ":username": username, ":password": password }
     );
 
     if (inactiveCheck.rows[0].CNT > 0) {

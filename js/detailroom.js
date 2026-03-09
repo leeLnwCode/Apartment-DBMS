@@ -11,7 +11,6 @@ const roomsData = {
   'B4': { name: 'ห้อง B4', price: 3000, deposit: 5500, signingDay: 3000, status: 'available', image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800' },
   'B5': { name: 'ห้อง B5', price: 3200, deposit: 5700, signingDay: 3200, status: 'available', image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800' }
 };
-
 let currentImageIndex = 0;
 
 let images = [];
