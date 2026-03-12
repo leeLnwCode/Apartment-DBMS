@@ -1,14 +1,11 @@
-const db = require("../db");
+const { getConnection } = require('../db');
 const path = require("path");
 const fs = require("fs");
 
-// =============================
-// GET ALL CONTRACTS
-// =============================
 exports.getAllContracts = async (req, res) => {
   let connection;
   try {
-    connection = await db.getConnection();
+    connection = await getConnection();
     const result = await connection.execute(
       `SELECT CONTRACID, CONTRACTFILE, ROOMID, UPLOADDATE
        FROM CONTRACT
@@ -28,16 +25,13 @@ exports.getAllContracts = async (req, res) => {
   }
 };
 
-// =============================
-// CREATE CONTRACT
-// =============================
 exports.createContract = async (req, res) => {
   let connection;
   try {
     const roomId = req.body.roomId;
     const fileName = req.file.filename;
 
-    connection = await db.getConnection();
+    connection = await getConnection();
 
     const sql = `
       INSERT INTO CONTRACT
@@ -47,12 +41,11 @@ exports.createContract = async (req, res) => {
     `;
 
     const binds = {
-      ":contractFile": fileName,
-      ":roomId": roomId
+      contractFile: fileName,
+      roomId: roomId
     };
 
     await connection.execute(sql, binds);
-
     res.json({ success: true });
 
   } catch (err) {
@@ -63,9 +56,6 @@ exports.createContract = async (req, res) => {
   }
 };
 
-// =============================
-// DOWNLOAD CONTRACT
-// =============================
 exports.downloadContract = async (req, res) => {
   const fileName = req.params.file;
   const filePath = path.join(__dirname, "../uploads", fileName);

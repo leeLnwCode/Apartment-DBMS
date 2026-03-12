@@ -1,4 +1,4 @@
-const db = require('../db');
+const { getConnection } = require('../db');
 
 exports.login = async (req, res) => {
   const { username, password } = req.body;
@@ -12,15 +12,14 @@ exports.login = async (req, res) => {
 
   let conn;
   try {
-    conn = await db.getConnection();
+    conn = await getConnection();
 
-    // 1. ตรวจสอบ ADMIN
     const adminResult = await conn.execute(
       `SELECT ADMINUSER
          FROM ADMIN
         WHERE ADMINUSER = :username
           AND ADMINPASS = :password`,
-      { ":username": username, ":password": password }
+      { username: username, password: password }
     );
 
     if (adminResult.rows.length > 0) {
@@ -31,14 +30,13 @@ exports.login = async (req, res) => {
       });
     }
 
-    // 2. ตรวจสอบ Tenant
     const tenantResult = await conn.execute(
       `SELECT AccID, RoomID, AccUser
          FROM Account
         WHERE AccUser   = :username
           AND AccPass   = :password
           AND IS_ACTIVE = 1`,
-      { ":username": username, ":password": password }
+      { username: username, password: password }
     );
 
     if (tenantResult.rows.length > 0) {
@@ -46,20 +44,19 @@ exports.login = async (req, res) => {
       return res.json({
         success: true,
         role: "tenant",
-        username: user.AccUser,
-        roomId:   user.RoomID,
-        accId:    user.AccID
+        username: user.ACCUSER,
+        roomId: user.ROOMID,
+        accId: user.ACCID
       });
     }
 
-    // 3. ตรวจสอบ Account ที่ถูกปิดใช้งาน
     const inactiveCheck = await conn.execute(
       `SELECT COUNT(*) AS CNT
          FROM Account
         WHERE AccUser   = :username
           AND AccPass   = :password
           AND IS_ACTIVE = 0`,
-      { ":username": username, ":password": password }
+      { username: username, password: password }
     );
 
     if (inactiveCheck.rows[0].CNT > 0) {

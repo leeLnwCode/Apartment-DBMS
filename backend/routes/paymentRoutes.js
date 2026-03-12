@@ -15,24 +15,11 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
-// -------------------------------------------------------
-// CREATE PAYMENT (รองรับหลายชื่อ field)
-router.post(
-  '/',
-  upload.single('payFile'),   // ชื่อหลักที่แนะนำ
-  paymentController.createPayment
-);
 
-// GET ALL PAYMENTS (Admin)
+router.post('/', upload.single('payFile'), paymentController.createPayment);
 router.get('/', paymentController.getAllPayments);
-
-// GET SLIP
 router.get('/slip/:payId', paymentController.getSlip);
-
-// GET PAYMENTS BY ROOM
 router.get('/room/:roomId', paymentController.getPaymentsByRoom);
-
-// GET PAYMENTS BY ACCID (ลูกบ้าน — เฉพาะ RENT)
 router.get('/member/:accId', paymentController.getPaymentsByAccId);
 
 module.exports = router;

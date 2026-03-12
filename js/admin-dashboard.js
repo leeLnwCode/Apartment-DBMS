@@ -680,7 +680,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     console.log("[DEBUG] submit form - billId จาก input:", billIdInput, "parsed เป็น:", billId);
 
-    if (billId && isNaN(billId)) {
+    if (billIdInput && isNaN(billId)) {
+      console.error("[DEBUG] Invalid billId input:", billIdInput);
       alert("BILLID ไม่ถูกต้อง (ต้องเป็นตัวเลข)");
       return;
     }
@@ -712,8 +713,17 @@ document.addEventListener('DOMContentLoaded', function () {
       : `http://localhost:3000/api/bills`;
 
     const method = billId ? "PUT" : "POST";
+    const payload = {
+      roomId,
+      waterUnit: usedW,
+      electricUnit: usedE,
+      waterCost,
+      electricCost,
+      billMonth,
+      billYear
+    };
 
-    console.log("[DEBUG] ส่ง request:", method, url);
+    console.log("[DEBUG] ส่ง request:", method, url, "Payload:", payload);
 
     try {
       const res = await fetch(url, {
@@ -721,15 +731,7 @@ document.addEventListener('DOMContentLoaded', function () {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          roomId,
-          waterUnit: usedW,
-          electricUnit: usedE,
-          waterCost,
-          electricCost,
-          billMonth,
-          billYear
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();

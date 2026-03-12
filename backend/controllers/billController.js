@@ -1,8 +1,5 @@
-const db = require('../db');
+const { getConnection } = require('../db');
 
-// ===========================
-// CREATE BILL
-// ===========================
 exports.createBill = async (req, res) => {
   const { roomId, waterUnit, electricUnit, waterCost, electricCost, billMonth, billYear } = req.body;
   if (!roomId || waterUnit == null || electricUnit == null || waterCost == null || electricCost == null || !billMonth || !billYear) {
@@ -16,24 +13,22 @@ exports.createBill = async (req, res) => {
   let connection;
 
   try {
-    connection = await db.getConnection();
+    connection = await getConnection();
 
-    // [ENHANCEMENT] ตรวจสอบบิลที่ค้างชำระก่อนออกบิลใหม่
     const unpaidCheck = await connection.execute(
       `SELECT COUNT(*) AS CNT FROM BILL WHERE ROOMID = :roomId AND STATUS = 'UNPAID' AND IS_DELETED = 0`,
-      { ":roomId": roomId }
+      { roomId: roomId }
     );
     if (unpaidCheck.rows[0].CNT > 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'ไม่สามารถออกบิลใหม่ได้ เนื่องจากยังมีบิลที่ค้างชำระ (หรือรอตรวจสอบ) สำหรับห้องนี้' 
+      return res.status(400).json({
+        success: false,
+        message: 'ไม่สามารถออกบิลใหม่ได้ เนื่องจากยังมีบิลที่ค้างชำระ (หรือรอตรวจสอบ) สำหรับห้องนี้'
       });
     }
 
-    // ดึงราคาห้องจาก ROOM
     const roomResult = await connection.execute(
       `SELECT RPRICE FROM ROOM WHERE ROOMID = :roomId`,
-      { ":roomId": roomId }
+      { roomId: roomId }
     );
 
     if (roomResult.rows.length === 0) {
@@ -43,10 +38,9 @@ exports.createBill = async (req, res) => {
     const roomPrice = roomResult.rows[0].RPRICE;
     const totalAmount = roomPrice + (water * wCost) + (electric * eCost);
 
-    // หา ACCID จาก ROOMID
     const accResult = await connection.execute(
       `SELECT ACCID FROM ACCOUNT WHERE ROOMID = :roomId AND IS_ACTIVE = 1`,
-      { ":roomId": roomId }
+      { roomId: roomId }
     );
 
     if (accResult.rows.length === 0) {
@@ -57,40 +51,44 @@ exports.createBill = async (req, res) => {
     const month = Number(billMonth);
     const year = Number(billYear);
 
-    // คำนวณ DueDate ใน JavaScript (วันที่ 5 ของเดือนถัดไป)
-    let nextMonth = month; // จริงๆ บิลมักจะออกเดือนไหนจ่ายเดือนไหน แต่โค้ดเก่าใช้ ADD_MONTHS(..., 1)
+    let nextMonth = month;
     let nextYear = year;
+
     if (nextMonth === 12) {
-        nextMonth = 1;
-        nextYear++;
+      nextMonth = 1;
+      nextYear++;
     } else {
-        nextMonth++;
+      nextMonth++;
     }
-    const dueDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-05`;
+
+    const dueDate = new Date(nextYear, nextMonth - 1, 5);
 
     await connection.execute(
       `INSERT INTO BILL (
-        WATERUNIT, ELECTRICUNIT, WATERCOST, ELECTRICCOST, TOTALAMOUNT, 
-        ACCID, ROOMID, STATUS, BILLMONTH, BILLYEAR, DUEDATE
+        BILLID,
+        WATERUNIT, ELECTRICUNIT, WATERCOST, ELECTRICCOST, TOTALAMOUNT,
+        ACCID, ROOMID, STATUS, BILLMONTH, BILLYEAR, DUEDATE, IS_DELETED
       )
       VALUES (
-        :WATERUNIT, :ELECTRICUNIT, :WATERCOST, :ELECTRICCOST, :TOTALAMOUNT, 
-        :ACCID, :ROOMID, 'UNPAID', :billMonth, :billYear, :DUEDATE
+        BILL_SEQ.NEXTVAL,
+        :waterUnit, :electricUnit, :waterCost, :electricCost, :totalAmount,
+        :accId, :roomId, 'UNPAID', :billMonth, :billYear, :dueDate, 0
       )`,
       {
-        ":WATERUNIT": water,
-        ":ELECTRICUNIT": electric,
-        ":WATERCOST": wCost,
-        ":ELECTRICCOST": eCost,
-        ":TOTALAMOUNT": totalAmount,
-        ":ACCID": accId,
-        ":ROOMID": roomId,
-        ":billMonth": month,
-        ":billYear": year,
-        ":DUEDATE": dueDate
+        waterUnit: water,
+        electricUnit: electric,
+        waterCost: wCost,
+        electricCost: eCost,
+        totalAmount: totalAmount,
+        accId: accId,
+        roomId: roomId,
+        billMonth: month,
+        billYear: year,
+        dueDate: dueDate
       }
     );
 
+    await connection.commit();
     res.json({ success: true, message: 'สร้างบิลสำเร็จ' });
 
   } catch (err) {
@@ -101,13 +99,10 @@ exports.createBill = async (req, res) => {
   }
 };
 
-// ===========================
-// GET ALL BILLS (ADMIN)
-// ===========================
 exports.getAllBills = async (req, res) => {
   let connection;
   try {
-    connection = await db.getConnection();
+    connection = await getConnection();
     const result = await connection.execute(
       `SELECT BILLID, ROOMID, WATERUNIT, ELECTRICUNIT, WATERCOST, ELECTRICCOST,
               TOTALAMOUNT, STATUS, BILLMONTH, BILLYEAR, DUEDATE
@@ -139,21 +134,18 @@ exports.getAllBills = async (req, res) => {
   }
 };
 
-// ===========================
-// GET BILLS BY ROOM
-// ===========================
 exports.getBillsByRoom = async (req, res) => {
   const { roomId } = req.params;
   let connection;
   try {
-    connection = await db.getConnection();
+    connection = await getConnection();
     const result = await connection.execute(
       `SELECT BILLID, WATERUNIT, ELECTRICUNIT, WATERCOST, ELECTRICCOST,
               TOTALAMOUNT, STATUS, BILLMONTH, BILLYEAR, DUEDATE
        FROM BILL
        WHERE ROOMID = :roomId AND IS_DELETED = 0
        ORDER BY BILLID DESC`,
-      { ":roomId": roomId }
+      { roomId: roomId }
     );
 
     const bills = result.rows.map(r => ({
@@ -178,21 +170,18 @@ exports.getBillsByRoom = async (req, res) => {
   }
 };
 
-// ===========================
-// GET BILLS BY ACCID
-// ===========================
 exports.getBillsByAccId = async (req, res) => {
   const { accId } = req.params;
   let connection;
   try {
-    connection = await db.getConnection();
+    connection = await getConnection();
     const result = await connection.execute(
       `SELECT BILLID, WATERUNIT, ROOMID, ELECTRICUNIT, WATERCOST, ELECTRICCOST,
               TOTALAMOUNT, STATUS, BILLMONTH, BILLYEAR, DUEDATE
        FROM BILL
        WHERE ACCID = :accId AND IS_DELETED = 0
        ORDER BY BILLID DESC`,
-      { ":accId": Number(accId) }
+      { accId: Number(accId) }
     );
     res.json({ success: true, data: result.rows });
   } catch (err) {
@@ -203,9 +192,6 @@ exports.getBillsByAccId = async (req, res) => {
   }
 };
 
-// ===========================
-// UPDATE BILL
-// ===========================
 exports.updateBill = async (req, res) => {
   const { billId } = req.params;
   const { roomId, waterUnit, electricUnit, waterCost, electricCost, billMonth, billYear } = req.body;
@@ -234,44 +220,45 @@ exports.updateBill = async (req, res) => {
 
   let connection;
   try {
-    connection = await db.getConnection();
-    const roomResult = await connection.execute(`SELECT RPRICE FROM ROOM WHERE ROOMID = :roomId`, { ":roomId": roomId });
+    connection = await getConnection();
+    const roomResult = await connection.execute(`SELECT RPRICE FROM ROOM WHERE ROOMID = :roomId`, { roomId: roomId });
     if (roomResult.rows.length === 0) return res.status(400).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
     const roomPrice = roomResult.rows[0].RPRICE;
     const totalAmount = roomPrice + (water * wCost) + (electric * eCost);
 
-    // DueDate calculation
     let nextMonth = month === 12 ? 1 : month + 1;
     let nextYear = month === 12 ? year + 1 : year;
-    const dueDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-05`;
+    const dueDate = new Date(nextYear, nextMonth - 1, 5);
 
     const result = await connection.execute(
       `UPDATE BILL SET
-        WATERUNIT = :water,
-        ELECTRICUNIT = :electric,
-        WATERCOST = :wCost,
-        ELECTRICCOST = :eCost,
+        WATERUNIT = :waterUnit,
+        ELECTRICUNIT = :electricUnit,
+        WATERCOST = :waterCost,
+        ELECTRICCOST = :electricCost,
         TOTALAMOUNT = :totalAmount,
         ROOMID = :roomId,
-        BILLMONTH = :month,
-        BILLYEAR = :year,
+        BILLMONTH = :billMonth,
+        BILLYEAR = :billYear,
         DUEDATE = :dueDate
       WHERE BILLID = :billId`,
       {
-        ":water": water,
-        ":electric": electric,
-        ":wCost": wCost,
-        ":eCost": eCost,
-        ":totalAmount": totalAmount,
-        ":roomId": roomId,
-        ":month": month,
-        ":year": year,
-        ":dueDate": dueDate,
-        ":billId": billId
+        waterUnit: water,
+        electricUnit: electric,
+        waterCost: wCost,
+        electricCost: eCost,
+        totalAmount: totalAmount,
+        roomId: roomId,
+        billMonth: month,
+        billYear: year,
+        dueDate: dueDate,
+        billId: Number(billId)
       }
     );
 
-    if (result.rowsAffected === 0) return res.status(404).json({ success: false, message: "ไม่พบบิลที่สำคัญ" });
+    if (result.rowsAffected === 0) return res.status(404).json({ success: false, message: "ไม่พบบิลที่ต้องการแก้ไข" });
+
+    await connection.commit();
     res.json({ success: true, message: "แก้ไขบิลสำเร็จ" });
   } catch (err) {
     console.error("Update bill error:", err);
@@ -281,16 +268,14 @@ exports.updateBill = async (req, res) => {
   }
 };
 
-// ===========================
-// PAY BILL
-// ===========================
 exports.payBill = async (req, res) => {
   const { billId } = req.body;
   let connection;
   try {
-    connection = await db.getConnection();
-    const result = await connection.execute(`UPDATE BILL SET STATUS = 'PAID' WHERE BILLID = :billId`, { ":billId": Number(billId) });
+    connection = await getConnection();
+    const result = await connection.execute(`UPDATE BILL SET STATUS = 'PAID' WHERE BILLID = :billId`, { billId: Number(billId) });
     if (result.rowsAffected === 0) return res.status(404).json({ success: false, message: 'ไม่พบบิล' });
+    await connection.commit();
     res.json({ success: true, message: 'ชำระเงินสำเร็จ' });
   } catch (err) {
     console.error("payBill error:", err);
@@ -300,16 +285,14 @@ exports.payBill = async (req, res) => {
   }
 };
 
-// ===========================
-// DELETE BILL
-// ===========================
 exports.deleteBill = async (req, res) => {
   const { billId } = req.params;
   let connection;
   try {
-    connection = await db.getConnection();
-    const result = await connection.execute(`UPDATE BILL SET IS_DELETED = 1 WHERE BILLID = :billId`, { ":billId": Number(billId) });
+    connection = await getConnection();
+    const result = await connection.execute(`UPDATE BILL SET IS_DELETED = 1 WHERE BILLID = :billId`, { billId: Number(billId) });
     if (result.rowsAffected === 0) return res.status(404).json({ success: false, message: "ไม่พบบิล" });
+    await connection.commit();
     res.json({ success: true, message: "ลบบิลสำเร็จ" });
   } catch (err) {
     console.error("deleteBill error:", err);
@@ -319,21 +302,18 @@ exports.deleteBill = async (req, res) => {
   }
 };
 
-// ===========================
-// GET LAST BILL BY ROOM
-// ===========================
 exports.getLastBillByRoom = async (req, res) => {
   const { roomId } = req.params;
   let connection;
   try {
-    connection = await db.getConnection();
+    connection = await getConnection();
     const result = await connection.execute(
       `SELECT WATERUNIT, ELECTRICUNIT
        FROM BILL
        WHERE ROOMID = :roomId
        ORDER BY BILLID DESC
-       LIMIT 1`,
-      { ":roomId": roomId }
+       FETCH FIRST 1 ROWS ONLY`,
+      { roomId: roomId }
     );
 
     if (result.rows.length === 0) {

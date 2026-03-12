@@ -10,15 +10,12 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const userRoutes = require('./routes/userRoutes');
 const billRoutes = require('./routes/billRoutes');
 const contractRoutes = require("./routes/contractRoutes");
-
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
 
 app.use("/api/rooms", roomRoutes);
 app.use("/api/bookings", bookingRoutes);
@@ -27,7 +24,6 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/bills', billRoutes);
 app.use("/api/contracts", contractRoutes);
-
 const PORT = process.env.PORT || 3000;
 
 app.use((req, res) => {
@@ -36,7 +32,6 @@ app.use((req, res) => {
     message: 'ไม่พบเส้นทางที่ร้องขอ'
   });
 });
-
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
