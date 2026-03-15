@@ -9,9 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body {
-      font-family: 'Prompt', sans-serif
-    }
+    body { font-family: 'Prompt', sans-serif }
   </style>
 </head>
 
@@ -32,10 +30,8 @@
   </header>
 
   <!-- Mobile Sidebar Overlay -->
-  <div id="mobileSidebar"
-    class="fixed inset-0 bg-black/50 z-50 hidden md:hidden transition-opacity duration-300 opacity-0">
-    <aside id="mobileSidebarPanel"
-      class="w-64 bg-white h-full shadow-xl flex flex-col transform -translate-x-full transition-transform duration-300 ease-in-out">
+  <div id="mobileSidebar" class="fixed inset-0 bg-black/50 z-50 hidden md:hidden transition-opacity duration-300 opacity-0">
+    <aside id="mobileSidebarPanel" class="w-64 bg-white h-full shadow-xl flex flex-col transform -translate-x-full transition-transform duration-300 ease-in-out">
       <div class="p-4 border-b flex justify-between items-center">
         <div class="font-semibold text-lg">เมนู</div>
         <button id="closeMobileMenuBtn" class="p-2 -mr-2 text-gray-600 hover:bg-gray-100 rounded focus:outline-none">
@@ -70,6 +66,7 @@
     </aside>
 
     <main class="flex-1 overflow-auto p-6">
+      <!-- Dashboard -->
       <div id="dashboard" class="page-view">
         <h2 class="text-2xl font-semibold mb-4">ภาพรวมแดชบอร์ด</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -86,17 +83,11 @@
             <div id="occupiedRooms" class="text-2xl font-bold">--</div>
           </div>
         </div>
-
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Room Status Chart -->
           <div class="bg-white rounded-xl p-6 shadow-sm">
             <h3 class="mb-4">แผนภูมิสถานะห้องพัก</h3>
-            <div style="height:300px;">
-              <canvas id="roomChart" style="width:100%;height:100%;"></canvas>
-            </div>
+            <div style="height:300px;"><canvas id="roomChart" style="width:100%;height:100%;"></canvas></div>
           </div>
-
-          <!-- Recent Booking Requests -->
           <div class="bg-white rounded-xl p-6 shadow-sm">
             <h3 class="mb-4">คำขอการจองล่าสุด</h3>
             <div id="recentRequests" class="space-y-2"></div>
@@ -104,6 +95,7 @@
         </div>
       </div>
 
+      <!-- Rooms -->
       <div id="rooms" class="page-view hidden">
         <h2 class="text-2xl font-semibold mb-4">จัดการห้องพัก</h2>
         <div class="bg-white rounded shadow overflow-auto">
@@ -121,32 +113,32 @@
         </div>
       </div>
 
+      <!-- Requests -->
       <div id="requests" class="page-view hidden">
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
           <h2 class="text-2xl font-semibold">คำขอการจอง</h2>
           <div class="flex items-center gap-2">
             <label class="text-sm font-medium text-gray-700">เดือน/ปี:</label>
-            <input type="month" id="filterRequests"
-              class="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
+            <input type="month" id="filterRequests" class="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
           </div>
         </div>
         <div id="requestsList" class="space-y-3"></div>
       </div>
 
+      <!-- Bills -->
       <div id="bills" class="page-view hidden">
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
           <h2 class="text-2xl font-semibold">บิล</h2>
           <div class="flex items-center gap-2">
             <label class="text-sm font-medium text-gray-700">เดือน/ปี:</label>
-            <input type="month" id="filterBills"
-              class="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
-            <button id="showAddBillModal"
-              class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-medium ml-2">เพิ่มบิล</button>
+            <input type="month" id="filterBills" class="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
+            <button id="showAddBillModal" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-medium ml-2">เพิ่มบิล</button>
           </div>
         </div>
         <div id="billsList" class="space-y-3"></div>
       </div>
 
+      <!-- Payments -->
       <div id="payments" class="page-view hidden">
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
           <h2 class="text-2xl font-semibold">ประวัติการชำระเงิน</h2>
@@ -158,31 +150,29 @@
               <option value="all">ทั้งหมด</option>
             </select>
             <label class="text-sm font-medium text-gray-700 ml-2">เดือน/ปี:</label>
-            <input type="month" id="filterPayments"
-              class="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
+            <input type="month" id="filterPayments" class="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
           </div>
         </div>
         <div id="paymentsList" class="space-y-3"></div>
       </div>
 
+      <!-- Users -->
       <div id="users" class="page-view hidden">
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-2xl font-semibold">ผู้ใช้งาน</h2>
-          <button id="showAddUserModal"
-            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-medium">เพิ่มผู้ใช้</button>
+          <button id="showAddUserModal" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-medium">เพิ่มผู้ใช้</button>
         </div>
         <div id="usersList" class="space-y-3"></div>
       </div>
 
+      <!-- Contracts -->
       <div id="contracts" class="page-view hidden">
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
           <h2 class="text-2xl font-semibold">สัญญาเช่า</h2>
           <div class="flex flex-wrap items-center gap-2">
             <label class="text-sm font-medium text-gray-700">เดือน/ปี:</label>
-            <input type="month" id="filterContracts"
-              class="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
-            <button id="showAddContractModal"
-              class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-medium">เพิ่มสัญญา</button>
+            <input type="month" id="filterContracts" class="border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
+            <button id="showAddContractModal" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-medium">เพิ่มสัญญา</button>
           </div>
         </div>
         <div id="contractsList" class="space-y-3"></div>
@@ -190,18 +180,18 @@
     </main>
   </div>
 
-  <!-- Modal สำหรับดูสลิป / ไฟล์ภาพ (ใช้ร่วมกันทั้ง admin และ member) -->
-<div id="slipModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 items-center justify-center p-4 transition-opacity">
-  <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto relative">
-    <div class="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
-      <h3 class="text-xl font-bold text-gray-800" id="slipModalTitle">สลิปการชำระเงิน</h3>
-      <button id="closeSlip" class="text-gray-500 hover:text-gray-800 text-3xl font-bold">&times;</button>
-    </div>
-    <div class="p-6 flex justify-center bg-gray-50">
-      <img id="slipImg" class="max-w-full max-h-[70vh] object-contain rounded-lg shadow" alt="สลิป" loading="lazy">
+  <!-- Slip Modal -->
+  <div id="slipModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 items-center justify-center p-4 transition-opacity">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto relative">
+      <div class="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
+        <h3 class="text-xl font-bold text-gray-800" id="slipModalTitle">สลิปการชำระเงิน</h3>
+        <button id="closeSlip" class="text-gray-500 hover:text-gray-800 text-3xl font-bold">&times;</button>
+      </div>
+      <div class="p-6 flex justify-center bg-gray-50">
+        <img id="slipImg" class="max-w-full max-h-[70vh] object-contain rounded-lg shadow" alt="สลิป" loading="lazy">
+      </div>
     </div>
   </div>
-</div>
 
   <!-- User Form Modal -->
   <div id="userModal" class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center p-4">
@@ -211,82 +201,125 @@
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium mb-1">ชื่อผู้ใช้ (Login)</label>
-            <input type="text" id="userUsername" required
-              class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="text" id="userUsername" required class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">รหัสผ่าน</label>
-            <input type="text" id="userPassword" required
-              class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="text" id="userPassword" required class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">ห้องพัก</label>
-          <select id="userRoom" required
-            class="w-full border rounded p-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500">
-            <!-- options will be injected -->
-          </select>
+          <select id="userRoom" required class="w-full border rounded p-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500"></select>
         </div>
-        
         <hr class="border-gray-200 my-4" />
-        
         <div>
           <label class="block text-sm font-medium mb-1">ชื่อ-นามสกุล ลูกบ้าน <span class="text-red-500">*</span></label>
-          <input type="text" id="userName" required placeholder="นายกิตติ มั่งมี"
-            class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+          <input type="text" id="userName" required placeholder="นายกิตติ มั่งมี" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium mb-1">เบอร์โทรศัพท์ <span class="text-red-500">*</span></label>
-            <input type="tel" id="userPhone" required placeholder="08X-XXX-XXXX"
-              class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="tel" id="userPhone" required placeholder="08X-XXX-XXXX" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">อีเมล (ไม่บังคับ)</label>
-            <input type="email" id="userEmail" placeholder="example@mail.com"
-              class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="email" id="userEmail" placeholder="example@mail.com" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
         </div>
-
         <div class="flex justify-end gap-2 mt-6">
-          <button type="button" id="cancelUserBtn"
-            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium transition-colors">ยกเลิก</button>
-          <button type="submit"
-            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium transition-colors border border-transparent">บันทึก</button>
+          <button type="button" id="cancelUserBtn" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium">ยกเลิก</button>
+          <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium">บันทึก</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Contract Form Modal -->
-  <div id="contractModal" class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center">
-    <div class="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full mx-4">
+  <!-- Contract Form Modal (แก้ไขใหม่ครบ) -->
+  <div id="contractModal" class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center p-4">
+    <div class="bg-white p-6 rounded-xl shadow-lg max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
       <h3 id="contractModalTitle" class="text-xl font-bold mb-4">เพิ่มสัญญาเช่าใหม่</h3>
       <form id="contractForm" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium mb-1">ห้อง</label>
-          <select id="contractRoom" required
-            class="w-full border rounded p-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500">
-            <!-- options will be injected -->
-          </select>
+
+        <!-- ห้องและสมาชิก -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">ห้อง <span class="text-red-500">*</span></label>
+            <select id="contractRoom" required
+              class="w-full border rounded p-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500">
+              <option value="">-- เลือกห้อง --</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">สมาชิก <span class="text-red-500">*</span></label>
+            <select id="contractMem" required
+              class="w-full border rounded p-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500">
+              <option value="">-- เลือกสมาชิก --</option>
+            </select>
+          </div>
         </div>
+
+        <!-- วันเริ่ม-สิ้นสุด -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">วันเริ่มสัญญา <span class="text-red-500">*</span></label>
+            <input type="date" id="contractStartDate" required
+              class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">วันสิ้นสุดสัญญา <span class="text-red-500">*</span></label>
+            <input type="date" id="contractEndDate" required
+              class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+        </div>
+
+        <!-- ค่าเช่าและมัดจำ -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">ค่าเช่า/เดือน (฿) <span class="text-red-500">*</span></label>
+            <input type="number" id="contractRentPrice" required min="0" placeholder="3500"
+              class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">เงินมัดจำ (฿) <span class="text-red-500">*</span></label>
+            <input type="number" id="contractDeposit" required min="0" placeholder="7000"
+              class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+        </div>
+
+        <!-- ราคาน้ำ-ไฟ -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">ราคาน้ำ/ยูนิต (฿)</label>
+            <input type="number" id="contractWaterPrice" min="0" value="25"
+              class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">ราคาไฟ/หน่วย (฿)</label>
+            <input type="number" id="contractElecPrice" min="0" value="7"
+              class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+        </div>
+
+        <!-- อัปโหลดไฟล์ -->
         <div>
-          <label class="block text-sm font-medium mb-1">อัปโหลดไฟล์ (จำลอง)</label>
-          <input type="file" id="contractFile" required
+          <label class="block text-sm font-medium mb-1">อัปโหลดไฟล์สัญญา (PDF/รูปภาพ)</label>
+          <input type="file" id="contractFile" accept=".pdf,.jpg,.jpeg,.png"
             class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+          <p class="text-xs text-gray-400 mt-1">รองรับ PDF, JPG, PNG (ไม่บังคับ)</p>
         </div>
+
         <div class="flex justify-end gap-2 mt-6">
           <button type="button" id="cancelContractBtn"
-            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium transition-colors">ยกเลิก</button>
+            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium">ยกเลิก</button>
           <button type="submit"
-            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium transition-colors border border-transparent">บันทึก</button>
+            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium">บันทึก</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- Bill Form Modal -->
-  
   <div id="billModal" class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center">
     <div class="bg-white p-6 rounded-xl shadow-lg max-w-md w-full mx-4 max-h-screen overflow-y-auto">
       <h3 id="billModalTitle" class="text-xl font-bold mb-4">เพิ่มบิลใหม่</h3>
@@ -294,87 +327,55 @@
         <input type="hidden" id="billId" />
         <div>
           <label class="block text-sm font-medium mb-1">ห้อง</label>
-          <select id="billRoom" required
-            class="w-full border rounded p-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500">
-            <!-- options will be injected -->
-          </select>
+          <select id="billRoom" required class="w-full border rounded p-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500"></select>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium mb-1">เดือน</label>
-            <select id="billMonth"
-              class="w-full border rounded p-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500">
-              <option value="1">มกราคม</option>
-<option value="2">กุมภาพันธ์</option>
-<option value="3">มีนาคม</option>
-<option value="4">เมษายน</option>
-<option value="5">พฤษภาคม</option>
-<option value="6">มิถุนายน</option>
-<option value="7">กรกฎาคม</option>
-<option value="8">สิงหาคม</option>
-<option value="9">กันยายน</option>
-<option value="10">ตุลาคม</option>
-<option value="11">พฤศจิกายน</option>
-<option value="12">ธันวาคม</option>
-</select>
+            <select id="billMonth" class="w-full border rounded p-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500">
+              <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option>
+              <option value="3">มีนาคม</option><option value="4">เมษายน</option>
+              <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option>
+              <option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+              <option value="9">กันยายน</option><option value="10">ตุลาคม</option>
+              <option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+            </select>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">ปี</label>
-            <input type="number" id="billYear" required
-              class="w-full border rounded p-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500"
-              value="2026" />
+            <input type="number" id="billYear" required class="w-full border rounded p-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500" value="2026" />
           </div>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium mb-1">มิเตอร์น้ำที่แล้ว</label>
-            <input type="number" id="prevWater" required class="w-full border rounded p-2 bg-gray-100 text-gray-500"
-              readonly />
+            <input type="number" id="prevWater" required class="w-full border rounded p-2 bg-gray-100 text-gray-500" readonly />
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">มิเตอร์น้ำเดือนนี้</label>
-            <input type="number" id="currWater" required
-              class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="number" id="currWater" required class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium mb-1">มิเตอร์ไฟที่แล้ว</label>
-            <input type="number" id="prevElec" required class="w-full border rounded p-2 bg-gray-100 text-gray-500"
-              readonly />
+            <input type="number" id="prevElec" required class="w-full border rounded p-2 bg-gray-100 text-gray-500" readonly />
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">มิเตอร์ไฟเดือนนี้</label>
-            <input type="number" id="currElec" required
-              class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="number" id="currElec" required class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
         </div>
-
         <div class="bg-green-50 p-4 rounded-lg text-sm space-y-2 mt-4 text-green-900">
-          <div class="flex justify-between">
-            <span>ค่าห้องพัก:</span>
-            <span id="calcRoomPrice" class="font-medium">฿0</span>
-          </div>
-          <div class="flex justify-between">
-            <span>ค่าน้ำ (ยูนิตละ 25฿):</span>
-            <span id="calcWaterCost" class="font-medium">฿0</span>
-          </div>
-          <div class="flex justify-between">
-            <span>ค่าไฟ (หน่วยละ 7฿):</span>
-            <span id="calcElecCost" class="font-medium">฿0</span>
-          </div>
+          <div class="flex justify-between"><span>ค่าห้องพัก:</span><span id="calcRoomPrice" class="font-medium">฿0</span></div>
+          <div class="flex justify-between"><span>ค่าน้ำ (ยูนิตละ 25฿):</span><span id="calcWaterCost" class="font-medium">฿0</span></div>
+          <div class="flex justify-between"><span>ค่าไฟ (หน่วยละ 7฿):</span><span id="calcElecCost" class="font-medium">฿0</span></div>
           <hr class="border-green-200" />
-          <div class="flex justify-between font-bold text-lg text-green-700">
-            <span>รวมทั้งหมด:</span>
-            <span id="calcTotalCost">฿0</span>
-          </div>
+          <div class="flex justify-between font-bold text-lg text-green-700"><span>รวมทั้งหมด:</span><span id="calcTotalCost">฿0</span></div>
         </div>
-
         <div class="flex justify-end gap-2 mt-6">
-          <button type="button" id="cancelBillBtn"
-            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium transition-colors">ยกเลิก</button>
-          <button type="submit" id="saveBillBtn"
-            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium transition-colors border border-transparent">สร้าง</button>
+          <button type="button" id="cancelBillBtn" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium">ยกเลิก</button>
+          <button type="submit" id="saveBillBtn" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium">สร้าง</button>
         </div>
       </form>
     </div>
@@ -384,12 +385,9 @@
   <div id="billDetailsModal" class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center">
     <div class="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full mx-4">
       <h3 class="text-xl font-bold mb-4">รายละเอียดบิล</h3>
-      <div id="billDetailsContent" class="space-y-3 text-sm text-gray-700">
-        <!-- Rendered by JS -->
-      </div>
+      <div id="billDetailsContent" class="space-y-3 text-sm text-gray-700"></div>
       <div class="flex justify-end mt-6">
-        <button type="button" id="closeBillDetailsBtn"
-          class="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 font-medium transition-colors">ปิด</button>
+        <button type="button" id="closeBillDetailsBtn" class="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 font-medium">ปิด</button>
       </div>
     </div>
   </div>
@@ -398,17 +396,13 @@
   <div id="bookingDetailsModal" class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center">
     <div class="bg-white p-6 rounded-xl shadow-lg max-w-md w-full mx-4">
       <h3 class="text-xl font-bold mb-4">รายละเอียดคำขอการจอง</h3>
-      <div id="bookingDetailsContent" class="space-y-3 text-sm text-gray-700">
-        <!-- Rendered by JS -->
-      </div>
+      <div id="bookingDetailsContent" class="space-y-3 text-sm text-gray-700"></div>
       <div class="flex justify-end mt-6">
-        <button type="button" id="closeBookingDetailsBtn"
-          class="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 font-medium transition-colors">ปิด</button>
+        <button type="button" id="closeBookingDetailsBtn" class="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 font-medium">ปิด</button>
       </div>
     </div>
   </div>
 
   <script src="js/admin-dashboard.js"></script>
 </body>
-
 </html>

@@ -1,4 +1,6 @@
 const { getConnection } = require('../db');
+const bcrypt = require('bcrypt');
+const oracledb = require('oracledb');
 
 exports.login = async (req, res) => {
   const { username, password } = req.body;
@@ -14,12 +16,14 @@ exports.login = async (req, res) => {
   try {
     conn = await getConnection();
 
+    // Admin ยังใช้ plain text เหมือนเดิม (ถ้าต้องการ hash admin ด้วยแจ้งได้เลยค่ะ)
     const adminResult = await conn.execute(
       `SELECT ADMINUSER
          FROM ADMIN
         WHERE ADMINUSER = :username
           AND ADMINPASS = :password`,
-      { username: username, password: password }
+      { username, password },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     if (adminResult.rows.length > 0) {
@@ -30,40 +34,49 @@ exports.login = async (req, res) => {
       });
     }
 
+    // แก้ไข: ดึง AccPass มาก่อน แล้วค่อย bcrypt.compare() แทนเปรียบเทียบใน SQL
     const tenantResult = await conn.execute(
-      `SELECT AccID, RoomID, AccUser
+      `SELECT AccID, RoomID, AccUser, AccPass
          FROM Account
         WHERE AccUser   = :username
-          AND AccPass   = :password
           AND IS_ACTIVE = 1`,
-      { username: username, password: password }
+      { username },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     if (tenantResult.rows.length > 0) {
       const user = tenantResult.rows[0];
-      return res.json({
-        success: true,
-        role: "tenant",
-        username: user.ACCUSER,
-        roomId: user.ROOMID,
-        accId: user.ACCID
-      });
+      const isMatch = await bcrypt.compare(password, user.ACCPASS);
+
+      if (isMatch) {
+        return res.json({
+          success: true,
+          role: "tenant",
+          username: user.ACCUSER,
+          roomId: user.ROOMID,
+          accId: user.ACCID
+        });
+      }
     }
 
-    const inactiveCheck = await conn.execute(
-      `SELECT COUNT(*) AS CNT
+    // แก้ไข: ตรวจสอบบัญชีที่ถูกปิด โดย bcrypt.compare() เช่นกัน
+    const inactiveResult = await conn.execute(
+      `SELECT AccPass
          FROM Account
         WHERE AccUser   = :username
-          AND AccPass   = :password
           AND IS_ACTIVE = 0`,
-      { username: username, password: password }
+      { username },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    if (inactiveCheck.rows[0].CNT > 0) {
-      return res.status(401).json({
-        success: false,
-        message: "บัญชีนี้ถูกปิดใช้งานแล้ว กรุณาติดต่อผู้ดูแลระบบ"
-      });
+    if (inactiveResult.rows.length > 0) {
+      const isMatch = await bcrypt.compare(password, inactiveResult.rows[0].ACCPASS);
+      if (isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "บัญชีนี้ถูกปิดใช้งานแล้ว กรุณาติดต่อผู้ดูแลระบบ"
+        });
+      }
     }
 
     res.status(401).json({

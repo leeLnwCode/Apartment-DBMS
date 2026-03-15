@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const path = require("path");
+ // หรือปรับ path ให้ถูกต้องตามโครงสร้างโปรเจคของคุณ
 
 const roomRoutes = require("./routes/roomRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
